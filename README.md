@@ -1,4 +1,10 @@
-computional_geometry
-====================
+﻿Computional Geometry
+====
 
-computional_geometry
+Computional Geometry
+---------------------------------
+计算几何
+---------------------------------
+
+* ConvexHull: 凸包
+

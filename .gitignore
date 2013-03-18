@@ -1,3 +1,19 @@
+Debug/*
+*/Debug/*
+*/ipch/*
+*/*/Debug/*
+*.suo
+*.exe
+*.swp
+# Binary version of the current resource script file;used for quick loading.
+*.aps
+*.sdf
+*.opensdf
+
+*.bak
+
+thumbs.db
+
 # Compiled Object files
 *.slo
 *.lo
@@ -5,9 +21,9 @@
 
 # Compiled Dynamic libraries
 *.so
-*.dylib
 
 # Compiled Static libraries
 *.lai
 *.la
 *.a
+
