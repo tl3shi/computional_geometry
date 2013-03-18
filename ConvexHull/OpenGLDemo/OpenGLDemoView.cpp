@@ -46,17 +46,33 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
         ON_WM_ERASEBKGND()
         ON_WM_LBUTTONDBLCLK()
         ON_COMMAND(ID_Nsqr4, &COpenGLDemoView::OnNsqr4)
+        ON_COMMAND(ID_Nsqr3, &COpenGLDemoView::OnNsqr3)
     END_MESSAGE_MAP()
 
     const int MAX_INT = 65536;
+    vector<CP_Vector2D> points;
+    vector<CP_Vector2D> convexHullResult;
+    CP_Vector2D leftest_and_lowest;
+    enum Algorithm{ ExtreamPoint_Method, ExtremeEdge_Method} method;
+
     class MyPoint
     {
     public:
         CP_Vector2D point;
         bool isExtreme;
-        MyPoint(CP_Vector2D &p):point(p),isExtreme(false)
+        MyPoint(CP_Vector2D p, bool extreme):point(p),isExtreme(extreme)
         {}
     };
+
+    class ExtremeEdge
+    {
+    public:
+        CP_Vector2D start;
+        CP_Vector2D end;
+        ExtremeEdge(CP_Vector2D p1, CP_Vector2D p2):start(p1),end(p2)
+        {}
+    };
+
 
     //test if po is on the left of p2p3
     bool to_left(const CP_Vector2D &p0, const CP_Vector2D &p1, const CP_Vector2D &p2)
@@ -81,8 +97,8 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
             return p0.m_x < p1.m_x;
         return p0.m_y < p1.m_y;
     }
-    CP_Vector2D leftest_and_lowest;
-
+    
+    //leftmost, theta in [0, pi]
     int compareByAngle(CP_Vector2D &p1, CP_Vector2D &p2)
     {
         double angle1 = (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest) * (p1 - leftest_and_lowest) / (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest).mf_getLength() / (p1 - leftest_and_lowest).mf_getLength();
@@ -90,6 +106,15 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
         
         return angle1 > angle2 ;
     }
+    //compareEdgeByAngle, this one may be [0, 2pi].so cannot use it.
+    int compareEdgeByAngle(ExtremeEdge &p1, ExtremeEdge &p2)
+    {
+        double angle1 = (p1.end.m_x - p1.start.m_x) / (p1.end - p1.start).mf_getLength();
+        double angle2 = (p2.end.m_x - p2.start.m_x) / (p2.end - p2.start).mf_getLength();
+
+        return angle1 > angle2 ;
+    }
+
     void for_debug()
     {
         {
@@ -115,14 +140,14 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
         }
     }
     //O(n^4)
-    vector<CP_Vector2D> cal_extreme_points(vector<MyPoint> &points)
+    vector<CP_Vector2D> cal_extreme_points()
     {
         vector<CP_Vector2D> extreme_points;
-
+        vector<MyPoint> my_points;
         unsigned int size = points.size();
         //inital all points to extreme
         for (unsigned int i = 0; i < size; i++)
-            points[i].isExtreme = true;
+            my_points.push_back(MyPoint(points[i], true));
 
         for (unsigned int p = 0; p < size; p++)
         {
@@ -132,10 +157,10 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
                 {
                     for (unsigned int k = 0; k < size; k++)
                     {
-                        if (k == p || k == q || k == r || !points[k].isExtreme) 
+                        if (k == p || k == q || k == r || !my_points[k].isExtreme) 
                             continue;
-                        if (in_triangle(points[k].point, points[p].point, points[q].point, points[r].point))
-                            points[k].isExtreme = false;
+                        if (in_triangle(my_points[k].point, my_points[p].point, my_points[q].point, my_points[r].point))
+                            my_points[k].isExtreme = false;
                     }
                 }
             }
@@ -143,8 +168,8 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
 
         for (unsigned int i = 0; i < size; i++)
         {
-            if(points[i].isExtreme)
-                extreme_points.push_back(points[i].point);
+            if(my_points[i].isExtreme)
+                extreme_points.push_back(my_points[i].point);
         }
         //sort the extrme_points
         sort(extreme_points.begin(), extreme_points.end(), compare);
@@ -154,8 +179,49 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
         return extreme_points;
     }
 
+    //O(n^3)
+    vector<CP_Vector2D> cal_extreme_edges()
+    {
+        vector<ExtremeEdge> edgs;
+        
+        unsigned int size = points.size();
 
-    vector<MyPoint> points;
+        for (unsigned int p = 0; p < size; p++)
+        {
+            for (unsigned int q = p+1 ; q < size; q++)
+            {
+                bool all_left = true, all_right = true;
+                for (unsigned int k = 0; k < size; k++)
+                {
+                    if (k == p || k == q || p == q)
+                        continue;
+                    if(to_left(points[k], points[p], points[q]))
+                        all_left = false;
+                    else
+                        all_right = false;
+                }
+                //let the direction be all the same
+                if (all_left)
+                    edgs.push_back(ExtremeEdge(points[p], points[q]));
+                if (all_right)
+                    edgs.push_back(ExtremeEdge(points[q], points[p]));
+            }
+        }
+        //O(n^2), should better sort the edges by angle.
+        vector<CP_Vector2D> convexPoints;
+        convexPoints.push_back(edgs[0].end);
+        while(convexPoints.size() != edgs.size())
+        {
+            for (unsigned int i = 0; i < edgs.size(); i++)
+            {
+                if (convexPoints[convexPoints.size() - 1] == edgs[i].start)
+                    convexPoints.push_back(edgs[i].end);
+            }
+        }
+        return convexPoints;
+    }
+
+   
 
     // COpenGLDemoView ¹¹Ôì/Îö¹¹
 
@@ -176,7 +242,7 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
 
         return CView::PreCreateWindow(cs);
     }
-    vector<CP_Vector2D> convexHullResult;
+ 
     void drawResult(vector<CP_Vector2D> &result)
     {
         if (result.size() == 0)
@@ -200,7 +266,7 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
         for (unsigned int i=0; i < points.size(); i++)
         {
             glColor3d(1, 0, 0);
-            CP_Vector2D p = points.at(i).point;
+            CP_Vector2D p = points.at(i);
             glVertex3d(p.m_x, p.m_y, 0);
         }
         glEnd();
@@ -218,7 +284,12 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         drawPoints();
-        drawResult(convexHullResult);
+
+        if (method == ExtreamPoint_Method)
+            drawResult(convexHullResult);
+        if (method == ExtremeEdge_Method)
+            drawResult(convexHullResult);
+
 
         SwapBuffers(pDC->m_hDC);
         wglMakeCurrent(NULL, NULL);
@@ -408,7 +479,7 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
             int y = rect.Height() - point.y;
 
             CP_Vector2D p = CP_Vector2D(x, y);
-            points.push_back(MyPoint(p));
+            points.push_back(p);
         }
         Invalidate(TRUE);
 
@@ -429,6 +500,13 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
 
     void COpenGLDemoView::OnNsqr4()
     {
-        convexHullResult = cal_extreme_points(points);
+        convexHullResult = cal_extreme_points();
+        Invalidate(FALSE);
+    }
+
+
+    void COpenGLDemoView::OnNsqr3()
+    {
+        convexHullResult = cal_extreme_edges();
         Invalidate(FALSE);
     }

@@ -218,6 +218,14 @@ bool operator == (const CP_Point2D& u, const CP_Point2D& v)
     return false;
 }
 
+//重写两个CP_Vector2D相等，坐标相等即相等 // in fact should be transit, also equals,usually to simulate points equals
+bool operator == (const CP_Vector2D& u, const CP_Vector2D& v)
+{
+    if (u.m_x == v.m_x && u.m_y == v.m_y) 
+        return true;
+    return false;
+}
+
 CP_Vector2D operator - (const CP_Point2D& p, const CP_Point2D& q)
 {
     return CP_Vector2D (p.m_x - q.m_x, p.m_y - q.m_y); 
