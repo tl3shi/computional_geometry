@@ -98,21 +98,25 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
         return p0.m_y < p1.m_y;
     }
     
-    //leftmost, theta in [0, pi]
+    //leftmost, theta in [0, pi], increasing 
     int compareByAngle(CP_Vector2D &p1, CP_Vector2D &p2)
     {
-        double angle1 = (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest) * (p1 - leftest_and_lowest) / (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest).mf_getLength() / (p1 - leftest_and_lowest).mf_getLength();
-        double angle2 = (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest) * (p2 - leftest_and_lowest) / (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest).mf_getLength() / (p2 - leftest_and_lowest).mf_getLength();
-        
-        return angle1 > angle2 ;
+        double arccos_angle1 = (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest) * (p1 - leftest_and_lowest) / (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest).mf_getLength() / (p1 - leftest_and_lowest).mf_getLength();
+        double arccos_angle2 = (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest) * (p2 - leftest_and_lowest) / (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest).mf_getLength() / (p2 - leftest_and_lowest).mf_getLength();
+        //cos  decreasing
+        return arccos_angle1 >= arccos_angle2 ;
     }
-    //compareEdgeByAngle, this one may be [0, 2pi].so cannot use it.
+    //compareEdgeByAngle, increasing 
     int compareEdgeByAngle(ExtremeEdge &p1, ExtremeEdge &p2)
     {
-        double angle1 = (p1.end.m_x - p1.start.m_x) / (p1.end - p1.start).mf_getLength();
-        double angle2 = (p2.end.m_x - p2.start.m_x) / (p2.end - p2.start).mf_getLength();
-
-        return angle1 > angle2 ;
+        double arccos_angle1 = (p1.end.m_x - p1.start.m_x) / (p1.end - p1.start).mf_getLength();
+        double arccos_angle2 = (p2.end.m_x - p2.start.m_x) / (p2.end - p2.start).mf_getLength();
+        if(p1.end.m_y - p1.start.m_y >= 0 && p2.end.m_y - p2.start.m_y >= 0 )//[0,pi], monotone decreasing
+            return arccos_angle1 >= arccos_angle2;
+        if(p1.end.m_y - p1.start.m_y < 0 && p2.end.m_y - p2.start.m_y < 0)//[pi, 2*pi] monotone increasing
+            return arccos_angle1 < arccos_angle2;
+        if((p1.end.m_y - p1.start.m_y) * (p2.end.m_y - p2.start.m_y) < 0)//one [0,pi],the other[pi,2pi]
+            return p1.end.m_y - p1.start.m_y > 0 ;//if true, theta(p1) < theta(p2) ,otherwise theta(p1) > theta(p2)
     }
 
     void for_debug()
@@ -207,17 +211,27 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
                     edgs.push_back(ExtremeEdge(points[q], points[p]));
             }
         }
-        //O(n^2), should better sort the edges by angle.
+        
         vector<CP_Vector2D> convexPoints;
-        convexPoints.push_back(edgs[0].end);
-        while(convexPoints.size() != edgs.size())
+
+        ////O(n^2), should better sort the edges by angle.
+        //convexPoints.push_back(edgs[0].end);
+        //while(convexPoints.size() != edgs.size())
+        //{
+        //    for (unsigned int i = 0; i < edgs.size(); i++)
+        //    {
+        //        if (convexPoints[convexPoints.size() - 1] == edgs[i].start)
+        //            convexPoints.push_back(edgs[i].end);
+        //    }
+        //}
+
+        //O(nlogn)
+        sort(edgs.begin(), edgs.end(), compareEdgeByAngle);
+        for (unsigned int i=0; i < edgs.size(); i++)
         {
-            for (unsigned int i = 0; i < edgs.size(); i++)
-            {
-                if (convexPoints[convexPoints.size() - 1] == edgs[i].start)
-                    convexPoints.push_back(edgs[i].end);
-            }
+            convexPoints.push_back(edgs[i].start);
         }
+
         return convexPoints;
     }
 
