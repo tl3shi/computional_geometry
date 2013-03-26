@@ -55,6 +55,7 @@ public:
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
     afx_msg void OnNsqr4();
     afx_msg void OnNsqr3();
+    afx_msg void OnGiftwrapping();
 };
 
 #ifndef _DEBUG  // OpenGLDemoView.cpp 中的调试版本

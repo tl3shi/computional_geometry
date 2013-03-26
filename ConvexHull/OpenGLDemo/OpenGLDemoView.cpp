@@ -47,6 +47,7 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
         ON_WM_LBUTTONDBLCLK()
         ON_COMMAND(ID_Nsqr4, &COpenGLDemoView::OnNsqr4)
         ON_COMMAND(ID_Nsqr3, &COpenGLDemoView::OnNsqr3)
+        ON_COMMAND(ID_GiftWrapping, &COpenGLDemoView::OnGiftwrapping)
     END_MESSAGE_MAP()
 
     const int MAX_INT = 65536;
@@ -117,6 +118,8 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
             return arccos_angle1 < arccos_angle2;
         if((p1.end.m_y - p1.start.m_y) * (p2.end.m_y - p2.start.m_y) < 0)//one [0,pi],the other[pi,2pi]
             return p1.end.m_y - p1.start.m_y > 0 ;//if true, theta(p1) < theta(p2) ,otherwise theta(p1) > theta(p2)
+        //remove the warning message.
+        return 1;
     }
 
     void for_debug()
@@ -235,6 +238,35 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
         return convexPoints;
     }
 
+    //O(n^2),in fact O(n*h),h = convex hull.size, output sensitive
+    vector<CP_Vector2D> giftwraping()
+    {
+        int ltl = 0;//find the lowest-and-leftmost point
+        for (unsigned int i = 1; i < points.size(); i++)
+        {
+            if(points[i].m_y < points[ltl].m_y || 
+               (points[i].m_y == points[ltl].m_y && points[i].m_x < points[ltl].m_x))
+               ltl = i;
+        }
+        vector<CP_Vector2D> convexPoints;
+        convexPoints.push_back(points[ltl]);
+        for(int p = ltl; ;)
+        {
+            int q = -1;
+            for(unsigned int k = 0; k < points.size(); k++)
+            {
+                if( (k != p) &&  (q < 0 || !to_left(points[k], points[p], points[q])))
+                    q = k;//update q if k lies in right of pq
+            }
+            if(ltl == q)
+                break;// has find out the convex hull circle
+            //find q
+            convexPoints.push_back(points[q]);
+            p = q;
+        }
+         return convexPoints;
+    }
+
    
 
     // COpenGLDemoView ¹¹Ôì/Îö¹¹
@@ -298,12 +330,13 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         drawPoints();
-
+        /*
         if (method == ExtreamPoint_Method)
             drawResult(convexHullResult);
         if (method == ExtremeEdge_Method)
             drawResult(convexHullResult);
-
+        */
+        drawResult(convexHullResult);
 
         SwapBuffers(pDC->m_hDC);
         wglMakeCurrent(NULL, NULL);
@@ -514,6 +547,7 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
 
     void COpenGLDemoView::OnNsqr4()
     {
+        convexHullResult.clear();
         convexHullResult = cal_extreme_points();
         Invalidate(FALSE);
     }
@@ -521,6 +555,15 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
 
     void COpenGLDemoView::OnNsqr3()
     {
+        convexHullResult.clear();
         convexHullResult = cal_extreme_edges();
+        Invalidate(FALSE);
+    }
+
+
+    void COpenGLDemoView::OnGiftwrapping()
+    {
+        convexHullResult.clear();
+        convexHullResult = giftwraping();
         Invalidate(FALSE);
     }
