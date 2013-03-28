@@ -56,6 +56,7 @@ public:
     afx_msg void OnNsqr4();
     afx_msg void OnNsqr3();
     afx_msg void OnGiftwrapping();
+    afx_msg void OnGrahamscan();
 };
 
 #ifndef _DEBUG  // OpenGLDemoView.cpp 中的调试版本

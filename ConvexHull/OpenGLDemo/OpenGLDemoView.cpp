@@ -18,7 +18,8 @@
 
 #include <algorithm>
 #include <vector>
-#include <math.h>
+#include <cmath>
+#include <stack>
 
 #include "GL/GLU.H" // 已经包含GL/GL.h
 #include  "CP_PointVector.h"
@@ -48,6 +49,7 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
         ON_COMMAND(ID_Nsqr4, &COpenGLDemoView::OnNsqr4)
         ON_COMMAND(ID_Nsqr3, &COpenGLDemoView::OnNsqr3)
         ON_COMMAND(ID_GiftWrapping, &COpenGLDemoView::OnGiftwrapping)
+        ON_COMMAND(ID_GrahamScan, &COpenGLDemoView::OnGrahamscan)
     END_MESSAGE_MAP()
 
     const int MAX_INT = 65536;
@@ -102,10 +104,13 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
     //leftmost, theta in [0, pi], increasing 
     int compareByAngle(CP_Vector2D &p1, CP_Vector2D &p2)
     {
+        if(p1 == leftest_and_lowest) return 1;//leftmost is the min means p1 < p2
+        if(p2 == leftest_and_lowest) return 0;//leftmost is the min means p1 > p2
+        
         double arccos_angle1 = (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest) * (p1 - leftest_and_lowest) / (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest).mf_getLength() / (p1 - leftest_and_lowest).mf_getLength();
         double arccos_angle2 = (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest) * (p2 - leftest_and_lowest) / (CP_Vector2D(MAX_INT, leftest_and_lowest.m_y) - leftest_and_lowest).mf_getLength() / (p2 - leftest_and_lowest).mf_getLength();
         //cos  decreasing
-        return arccos_angle1 >= arccos_angle2 ;
+        return arccos_angle1 > arccos_angle2 ;
     }
     //compareEdgeByAngle, increasing 
     int compareEdgeByAngle(ExtremeEdge &p1, ExtremeEdge &p2)
@@ -267,6 +272,59 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
          return convexPoints;
     }
 
+    //O(nlgn)
+    vector<CP_Vector2D> graham_scan()
+    {
+        int ltl = 0;//find the lowest-and-leftmost point
+        for (unsigned int i = 1; i < points.size(); i++)
+        {
+            if(points[i].m_y < points[ltl].m_y || 
+                (points[i].m_y == points[ltl].m_y && points[i].m_x < points[ltl].m_x))
+                ltl = i;
+        }
+
+        leftest_and_lowest = points[ltl];
+        //compareByAngle should use the ltl point
+        sort(points.begin(), points.end(), compareByAngle);
+
+        vector<CP_Vector2D> convexPoints;
+        stack<CP_Vector2D> S, T;
+        S.push(points[0]);S.push(points[1]);
+        for (int i = points.size()-1; i >= 2;i--)
+        {
+            T.push(points[i]);
+        }
+        CP_Vector2D s0, s1;
+        while (!T.empty())
+        {
+            s0 = S.top();
+            S.pop();//s0 is gone
+            if(S.empty())
+            {
+                S.push(T.top());
+                break;
+            }
+            s1 = S.top();//get s1
+            S.push(s0);
+            while (!to_left(T.top(), s1, s0))
+            { 
+                S.pop(); 
+                s0 = S.top();
+                S.pop();//s0 is gone
+                s1 = S.top();//get s1
+                S.push(s0);
+            }
+            S.push(T.top());
+            T.pop();
+        }
+        unsigned int size = S.size();
+        for(int i = 0; i < size; i++)
+        {
+            convexPoints.push_back(S.top());
+            S.pop();//size is change, cannot use i < S.size()
+        }
+        return convexPoints;
+    }
    
 
     // COpenGLDemoView 构造/析构
@@ -565,5 +623,13 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
     {
         convexHullResult.clear();
         convexHullResult = giftwraping();
+        Invalidate(FALSE);
+    }
+
+
+    void COpenGLDemoView::OnGrahamscan()
+    {
+        convexHullResult.clear();
+        convexHullResult = graham_scan();
         Invalidate(FALSE);
     }
