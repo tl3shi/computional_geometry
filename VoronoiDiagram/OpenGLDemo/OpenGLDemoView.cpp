@@ -81,7 +81,7 @@ BOOL COpenGLDemoView::PreCreateWindow(CREATESTRUCT& cs)
 }
 void writetofile()
 {
-    ofstream outf("f:/pointsout.txt");
+    ofstream outf("pointsout.txt");
     streambuf *default_buf=cout.rdbuf();   
     cout.rdbuf( outf.rdbuf() );   
     for (unsigned int i = 0; i < points.size(); i++)
@@ -95,6 +95,8 @@ vector<Point> readfromfile(char* filename)
 {
     vector<Point> ps;
     ifstream f(filename);
+    if(!f.good())
+        return ps;
     while (!f.eof())
     {
         int x = -1, y = -1;
@@ -179,7 +181,7 @@ void drawResult()
     }
 
 
-    ofstream outf("f:/pointsout.debug.txt");
+    ofstream outf("pointsout.debug.txt");
     streambuf *default_buf=cout.rdbuf();   
     cout.rdbuf( outf.rdbuf() );   
      
@@ -488,7 +490,7 @@ int COpenGLDemoView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_hRC = wglCreateContext(dc.m_hDC);
     if(debug)
     {
-        points = readfromfile("f:/points-5.txt");
+        points = readfromfile("pointsout-err.txt");
         OnDevideConquer();
     }
 	//MessageBox(L"鼠标左键选择控制点位置\r\n右键生成画bezier曲线\r\n双击左键清空控制点");

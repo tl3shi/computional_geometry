@@ -487,30 +487,21 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             {
                 if (lastLeft)//both this intersection and the last intersection are with the left sub voronoi diagram
                 {
-                    e2->SetNextEdge(devideChain.at(i-1).intersectionEdge);
-                    devideChain.at(i-1).intersectionEdge->SetPrevEdge(e2);
+                    e2->SetNextEdge(devideChain.at(i-1).intersectionEdge->twinEdge());
+                    devideChain.at(i-1).intersectionEdge->twinEdge()->SetPrevEdge(e2);
                     //lastE2 has set the face,but not set the next edge
-                    
+                    e1->SetPrevEdge(lastE1);
+                    lastE1->SetNextEdge(e1);
                 }else
                 {
                     e2->SetNextEdge(lastE2);
                     lastE2->SetPrevEdge(e2);
                     lastE2->SetIncFace(leftMin->incFace());
+
+                    e1->SetPrevEdge(lastE1->nextEdge()->twinEdge());
+                    lastE1->nextEdge()->twinEdge()->SetNextEdge(e1);
                 }
             }
-            {
-                if(!lastLeft)//both this intersection and last intersection are with the right sub voronoi diagram
-                {
-                    e1->SetPrevEdge(devideChain.at(i-1).intersectionEdge->twinEdge());
-                    devideChain.at(i-1).intersectionEdge->twinEdge()->SetNextEdge(e1);
-                    //lastE1->SetIncFace(edge->twinEdge()->incFace());//should be the opposite site, infact has been set face above
-                }else
-                {
-                    e1->SetPrevEdge(lastE1);
-                    lastE1->SetNextEdge(e1);
-                    lastE1->SetIncFace(rightMin->incFace());
-                }
-           }
 
             left->halfedges.push_back(e2);
             right->halfedges.push_back(e1);
@@ -539,14 +530,19 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             {
                 if (lastLeft)//both this intersection and the last intersection are with the left sub voronoi diagram
                 {
-                    e2->SetNextEdge(devideChain.at(i-1).intersectionEdge);
-                    devideChain.at(i-1).intersectionEdge->SetPrevEdge(e2);
+                    e2->SetNextEdge(devideChain.at(i-1).intersectionEdge->twinEdge());
+                    devideChain.at(i-1).intersectionEdge->twinEdge()->SetPrevEdge(e2);
                     //lastE2 has set the face but not set next edge
+                    e1->SetPrevEdge(lastE1);
+                    lastE1->SetNextEdge(e1);
                 }else
                 {
                     e2->SetNextEdge(lastE2);
                     lastE2->SetPrevEdge(e2);
                     lastE2->SetIncFace(e2->incFace());// the same site
+                    
+                    e1->SetPrevEdge(lastE1->nextEdge()->twinEdge());
+                    lastE1->nextEdge()->twinEdge()->SetNextEdge(e1);
                 }
             }
             lastLeft = true;
@@ -564,11 +560,16 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
                     e1->SetPrevEdge(devideChain.at(i-1).intersectionEdge->twinEdge());
                     devideChain.at(i-1).intersectionEdge->twinEdge()->SetNextEdge(e1);
                     //lastE1->SetIncFace(edge->twinEdge()->incFace());//should be the opposite site, infact has been set face above
+                    e2->SetNextEdge(lastE2);
+                    lastE2->SetPrevEdge(e2);
                 }else
                 {
                     e1->SetPrevEdge(lastE1);
                     lastE1->SetNextEdge(e1);
                     lastE1->SetIncFace(e1->incFace());// the same site
+
+                    e2->SetNextEdge(lastE2->prevEdge()->twinEdge());
+                    lastE2->prevEdge()->twinEdge()->SetPrevEdge(e2);
                 }
             }
             lastLeft = false;
@@ -661,7 +662,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
  
         Halfedge * leftIntersectionEdge;
         Halfedge * rightIntersectionEdge;
-        bool lastLeft = false;//the last intersection is left
+         
         Halfedge* initalEdge = leftMax->incFace()->incEdge();
         Halfedge*  edge;
         edge = initalEdge;
@@ -677,7 +678,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
 
             if (t!= NULL && t->y() > leftIntersectP->y()
-                && t->y() < mid->y())//ensure the intersection point is the NEW highest 
+                && t->y() < lastV->y())//ensure the intersection point is the NEW highest 
             {
                 leftIntersectP = t;
                 leftIntersectionEdge = edge;
@@ -697,7 +698,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
             if (t!= NULL && t->y() > leftIntersectP->y()
-                 && t->y() < mid->y())
+                 && t->y() < lastV->y())
             {
                 leftIntersectP = t;
                 leftIntersectionEdge = edge;
@@ -720,7 +721,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
             if (t!= NULL && t->y() > rightIntersectP->y()
-                &&t->y() < mid->y())
+                &&t->y() < lastV->y())
             {
                 rightIntersectP = t;
                 rightIntersectionEdge = edge;
@@ -741,7 +742,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
             if (t!= NULL && t->y() > rightIntersectP->y()
-                 && t->y() < mid->y())
+                 && t->y() < lastV->y())
             {
                 rightIntersectP = t;
                 rightIntersectionEdge = initalEdge;

@@ -16,8 +16,26 @@ VoronoiDiagram::VoronoiDiagram( void ) {
     //faces.push_back( new Face( NULL, NULL ) );
 }
 
-VoronoiDiagram::~VoronoiDiagram( void ) {
-
+VoronoiDiagram::~VoronoiDiagram( void ) 
+{
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+       delete faces[i];
+    }
+    
+    for (unsigned int i = 0; i < sites.size(); i++)
+    {
+       delete sites[i];
+    }
+     
+    for (unsigned int i = 0; i < halfedges.size(); i++)
+    {
+       delete halfedges[i];
+    }
+    for (unsigned int i = 0; i < vertices.size(); i++)
+    {
+        delete vertices[i];
+    }
 }
 
 bool VoronoiDiagram::ToLeft( Site* s1, Site* s2, Site* new_site ) {
