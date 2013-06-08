@@ -433,7 +433,7 @@ public:
     }
 };
 
-void connectWithChain(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right, Site* leftMin, Site * rightMin)
+void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right, Site* leftMin, Site * rightMin)
 {
     Halfedge * lastE1 = new Halfedge();
     Halfedge * lastE2 = new Halfedge();
@@ -588,6 +588,34 @@ void connectWithChain(vector<DevideChain> &devideChain, VoronoiDiagram* left, Vo
         lastE2 = e2;
     }
 }
+
+void connectWithChain(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right, Site* leftMin, Site * rightMin)
+{
+    connectWithChainOld(devideChain, left, right, leftMin, rightMin);
+    //remote the edge who is single
+    vector<Halfedge*>::iterator it;
+    for (it = left->halfedges.begin(); it!=left->halfedges.end();)
+    {
+        if((*it)->nextEdge() == NULL && (*it)->prevEdge() == NULL)
+        {
+            it = left->halfedges.erase(it);
+        }else{
+            it++;
+        }
+    }
+
+    for (it = right->halfedges.begin(); it!=right->halfedges.end();)
+    {
+        if((*it)->nextEdge() == NULL && (*it)->prevEdge() == NULL)
+        {
+            it = right->halfedges.erase(it);
+        }else{
+            it++;
+        }
+    }
+}
+
+
 
 VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 {

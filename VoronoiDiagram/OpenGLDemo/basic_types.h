@@ -221,7 +221,7 @@ class Halfedge
 
 public:
     Halfedge( void ) { twinEdge_ = NULL; oriVertex_ = NULL; incFace_ = NULL; prevEdge_ = NULL; nextEdge_ = NULL; 
-                       midPoint_ = NULL; direction_ = NULL; endVertex = NULL;};
+                       midPoint_ = NULL; direction_ = NULL; endVertex = NULL; hasDraw=false;};
     Halfedge( Halfedge* twinEdge, Vertex* oriVertex, Face* incFace, Halfedge* prevEdge, Halfedge* nextEdge, 
               Point* midPoint, Vector* direction ) 
             { twinEdge_ = twinEdge; oriVertex_ = oriVertex; incFace_ = incFace; prevEdge_ = prevEdge; nextEdge_ = nextEdge; 
@@ -256,6 +256,7 @@ public:
     //
 public:
     Vertex*   endVertex;
+    bool hasDraw;
 
 private:
     Halfedge* twinEdge_;  //pointer to twin halfedge

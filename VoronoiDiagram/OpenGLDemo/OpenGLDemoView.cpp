@@ -57,6 +57,8 @@ BEGIN_MESSAGE_MAP(COpenGLDemoView, CView)
 END_MESSAGE_MAP()
 
 void initLights();
+void drawString(int x, int y, char* str);
+void drawString(int x, int y, CString cstr);
 
 // COpenGLDemoView 构造/析构
 
@@ -119,6 +121,15 @@ void drawPoints()
         glVertex3d(p.x(), p.y(), 0);
     }
     glEnd();
+
+    CString str;
+    for (unsigned int i=0; i < points.size(); i++)
+    {
+        glColor3d(1, 0, 0);
+        Point p = points.at(i);
+        str.Format(L"%d", i);
+        drawString(p.x(), p.y()+5, str);
+    }
 }
 
 void drawString(int x, int y, char* str)
@@ -183,7 +194,7 @@ void drawResult()
             {
                 Point np = edge->twinEdge()->oriVertex()->p;
                 glVertex3d(np.x(), np.y(), 0);
-                
+
                 p = np + (-*(edge->direction())) * INFINITE_LENGTH;
                 glVertex3d(p.x(), p.y(), 0);
 
@@ -192,6 +203,8 @@ void drawResult()
             }
             //regular edge
             glVertex3d(p.x(), p.y(), 0);
+        
+            
             Point np = edge->twinEdge()->oriVertex()->p;
             glVertex3d(np.x(), np.y(), 0);
             cout<< i<<":"<< p.x() << "," << p.y() <<"," << np.x() << ","<< np.y() << endl;
@@ -206,6 +219,8 @@ void drawResult()
                 {
                     p = Point(0,0) - (*(edge->direction())) * INFINITE_LENGTH;
                     glVertex3d(p.x(), p.y(), 0);
+                  
+
                     p = Point(0,0) + (*(edge->direction())) * INFINITE_LENGTH;
                     glVertex3d(p.x(), p.y(), 0);
                     cout<< i<<":"<<  p.x() << "," << p.y() <<"," << np.x() << "," << np.y() << endl;
@@ -221,6 +236,21 @@ void drawResult()
     }
     glEnd();
     cout.rdbuf(default_buf);   
+
+    //draw string
+    return;
+    CString str;
+    for (unsigned int i = 0; i < result->halfedges.size(); i++)
+    {
+        Halfedge * edge = result->halfedges.at(i);
+        Point* p = edge->midPoint();
+        str.Format(L"%d", i);
+        if(edge->twinEdge()->hasDraw)
+            drawString(p->x(), p->y()-5, str);
+        else
+            drawString(p->x(), p->y(), str);
+        edge->hasDraw = true;
+    }
 }
 
 void drawResultFUCK()
@@ -332,13 +362,12 @@ void COpenGLDemoView::OnDraw(CDC* pDC)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
  
     drawPoints();
-    drawString(100, 100 , ("tanglei"));
-    drawString(0, 0 , ("tanglei"));
+    drawString(0, 0 , ("tanglei-begin"));
     if (result != NULL)
     {
         drawResult();
     }
-    
+    drawString(100, 100 , ("tanglei-end"));
 
 	SwapBuffers(pDC->m_hDC);
 	wglMakeCurrent(NULL, NULL);
@@ -459,7 +488,7 @@ int COpenGLDemoView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_hRC = wglCreateContext(dc.m_hDC);
     if(debug)
     {
-        points = readfromfile("f:/points-6.txt");
+        points = readfromfile("f:/points-5.txt");
         OnDevideConquer();
     }
 	//MessageBox(L"鼠标左键选择控制点位置\r\n右键生成画bezier曲线\r\n双击左键清空控制点");
