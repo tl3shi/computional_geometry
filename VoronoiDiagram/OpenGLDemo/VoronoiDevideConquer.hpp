@@ -627,6 +627,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
              lastV = devideChain.at(devideChain.size()-1).intersectionV;
         else
             lastV = infiniteVertex;
+        //the intersection should below the mid point
 
         Point* leftIntersectP = new Point(DBL_MIN, DBL_MIN);
  
@@ -648,7 +649,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
 
             if (t!= NULL && t->y() > leftIntersectP->y()
-                && t->y() < lastV->y())//ensure the intersection point is the NEW highest 
+                && t->y() < mid->y())//ensure the intersection point is the NEW highest 
             {
                 leftIntersectP = t;
                 leftIntersectionEdge = edge;
@@ -668,7 +669,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
             if (t!= NULL && t->y() > leftIntersectP->y()
-                 && t->y() < lastV->y())
+                 && t->y() < mid->y())
             {
                 leftIntersectP = t;
                 leftIntersectionEdge = edge;
@@ -691,7 +692,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
             if (t!= NULL && t->y() > rightIntersectP->y()
-                &&t->y() < lastV->y())
+                &&t->y() < mid->y())
             {
                 rightIntersectP = t;
                 rightIntersectionEdge = edge;
@@ -712,7 +713,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
             if (t!= NULL && t->y() > rightIntersectP->y()
-                 && t->y() < lastV->y())
+                 && t->y() < mid->y())
             {
                 rightIntersectP = t;
                 rightIntersectionEdge = initalEdge;
