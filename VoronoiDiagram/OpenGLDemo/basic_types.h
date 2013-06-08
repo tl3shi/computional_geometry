@@ -221,7 +221,7 @@ class Halfedge
 
 public:
     Halfedge( void ) { twinEdge_ = NULL; oriVertex_ = NULL; incFace_ = NULL; prevEdge_ = NULL; nextEdge_ = NULL; 
-                       midPoint_ = NULL; direction_ = NULL; };
+                       midPoint_ = NULL; direction_ = NULL; endVertex = NULL;};
     Halfedge( Halfedge* twinEdge, Vertex* oriVertex, Face* incFace, Halfedge* prevEdge, Halfedge* nextEdge, 
               Point* midPoint, Vector* direction ) 
             { twinEdge_ = twinEdge; oriVertex_ = oriVertex; incFace_ = incFace; prevEdge_ = prevEdge; nextEdge_ = nextEdge; 
@@ -243,7 +243,7 @@ public:
     inline void SetMidPoint( Point* midPoint ) { midPoint_ = midPoint; };
     inline void SetDirection( Vector* direction ) { direction_ = direction; };
     inline void SetDirection( Vector direction ) { direction_ = new Vector(direction.x(), direction.y());};
-
+    inline void SetEndVertex(Vertex* vertex){endVertex = vertex;};
     //
     friend inline bool operator == ( const Halfedge& p1, const Halfedge& p2 )
     {
@@ -254,6 +254,8 @@ public:
 
     };
     //
+public:
+    Vertex*   endVertex;
 
 private:
     Halfedge* twinEdge_;  //pointer to twin halfedge
@@ -263,6 +265,7 @@ private:
     Halfedge* nextEdge_;  //pointer to CCW next halfedge
     Point*    midPoint_;  //the midpoint of the two sites of this halfedge
     Vector*   direction_; //the direction of this halfedge
+   
 };
 
 

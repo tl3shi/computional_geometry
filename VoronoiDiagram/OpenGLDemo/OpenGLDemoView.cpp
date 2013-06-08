@@ -145,6 +145,7 @@ void drawString(int x, int y, CString cstr)
 
 const int INFINITE_LENGTH  = 2000;
 
+//if the half edge's top infomation is all right, may be the following function is OK
 void drawResult()
 {
     Point infinitePoint = Point(DBL_MAX, DBL_MAX);
@@ -170,7 +171,6 @@ void drawResult()
     ofstream outf("f:/pointsout.debug.txt");
     streambuf *default_buf=cout.rdbuf();   
     cout.rdbuf( outf.rdbuf() );   
-
      
     for (unsigned int i = 0; i < result->halfedges.size(); i++)
     {
@@ -184,7 +184,7 @@ void drawResult()
                 Point np = edge->twinEdge()->oriVertex()->p;
                 glVertex3d(np.x(), np.y(), 0);
                 
-                p = np - (*(edge->direction())) * INFINITE_LENGTH;
+                p = np + (-*(edge->direction())) * INFINITE_LENGTH;
                 glVertex3d(p.x(), p.y(), 0);
 
                 cout<< i<<":"<< p.x() << "," << p.y() <<"," << np.x() << ","<< np.y() << endl;
@@ -211,11 +211,6 @@ void drawResult()
                     cout<< i<<":"<<  p.x() << "," << p.y() <<"," << np.x() << "," << np.y() << endl;
                     continue;
                 }
-                //ray point from infinite
-                {
-                
-
-                }
             }
             glVertex3d(p.x(), p.y(), 0);
             Point np = p + (*(edge->direction())) * INFINITE_LENGTH;
@@ -226,8 +221,104 @@ void drawResult()
     }
     glEnd();
     cout.rdbuf(default_buf);   
-
 }
+
+void drawResultFUCK()
+{
+    Point infinitePoint = Point(DBL_MAX, DBL_MAX);
+    glLineWidth(1);
+    glBegin(GL_LINES);
+    glColor3d(1, 0, 0);
+    if(result->sites.size() == 1)//one site, the whole face
+        return;
+    if(result->sites.size() == 2)//two sites,draw a line
+    {
+        Halfedge * e  = result->halfedges.at(0);
+        Point * p = e->midPoint();
+        Point oneP, anotherP ;
+        oneP = (*p) + (-*(e->direction())) * INFINITE_LENGTH;
+        anotherP = (*p) - (-*(e->direction())) * INFINITE_LENGTH;
+        glVertex3d(oneP.x(), oneP.y(), 0);
+        glVertex3d(anotherP.x(), anotherP.y(), 0);
+        glEnd();
+        return;
+    }
+
+
+    ofstream outf("f:/pointsout.debug.txt");
+    streambuf *default_buf=cout.rdbuf();   
+    cout.rdbuf( outf.rdbuf() );   
+
+    for (unsigned int i = 0; i < result->halfedges.size(); i++)
+    {
+        Halfedge * edge = result->halfedges.at(i);
+
+        if (edge->nextEdge() != NULL)// edge point to regular point
+        {
+            Point p = edge->oriVertex()->p;
+            if(p == infinitePoint)//edge from infinite
+            {
+                Point np = edge->twinEdge()->oriVertex()->p;
+                glVertex3d(np.x(), np.y(), 0);
+                
+                //fuck begin
+                if(edge->endVertex != NULL && edge->endVertex->p != infinitePoint)
+                {
+                    p = edge->endVertex->p;
+                    glVertex3d(p.x(), p.y(), 0);
+                    continue;
+                }
+                //fuck end
+
+                p = np + (-*(edge->direction())) * INFINITE_LENGTH;
+                glVertex3d(p.x(), p.y(), 0);
+
+                cout<< i<<":"<< p.x() << "," << p.y() <<"," << np.x() << ","<< np.y() << endl;
+                continue;
+            }
+            //regular edge
+            glVertex3d(p.x(), p.y(), 0);
+            Point np = edge->twinEdge()->oriVertex()->p;
+            glVertex3d(np.x(), np.y(), 0);
+            cout<< i<<":"<< p.x() << "," << p.y() <<"," << np.x() << ","<< np.y() << endl;
+        }
+        else//ray, point to infinite
+        {
+            Point p = edge->oriVertex()->p;
+            if (p == infinitePoint)
+            {
+                Point np = edge->twinEdge()->oriVertex()->p;
+                if (np == infinitePoint)// a line from infinite to infinite 
+                {
+                    p = Point(0,0) - (*(edge->direction())) * INFINITE_LENGTH;
+                    glVertex3d(p.x(), p.y(), 0);
+                    p = Point(0,0) + (*(edge->direction())) * INFINITE_LENGTH;
+                    glVertex3d(p.x(), p.y(), 0);
+                    cout<< i<<":"<<  p.x() << "," << p.y() <<"," << np.x() << "," << np.y() << endl;
+                    continue;
+                }
+            }
+            glVertex3d(p.x(), p.y(), 0);
+
+            //fuck begin
+            if(edge->endVertex != NULL && edge->endVertex->p != infinitePoint)
+            {
+                p = edge->endVertex->p;
+                glVertex3d(p.x(), p.y(), 0);
+                continue;
+            }
+            //fuck end
+
+            Point np = p + (*(edge->direction())) * INFINITE_LENGTH;
+            glVertex3d(np.x(), np.y(), 0);
+
+            cout<< i<<":"<<  p.x() << "," << p.y() <<"," << np.x() << "," << np.y() << endl;
+        }
+    }
+    glEnd();
+    cout.rdbuf(default_buf);   
+}
+
 
 void COpenGLDemoView::OnDraw(CDC* pDC)
 {
@@ -368,7 +459,7 @@ int COpenGLDemoView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_hRC = wglCreateContext(dc.m_hDC);
     if(debug)
     {
-        points = readfromfile("f:/pointsout.txt");
+        points = readfromfile("f:/points-6.txt");
         OnDevideConquer();
     }
 	//MessageBox(L"鼠标左键选择控制点位置\r\n右键生成画bezier曲线\r\n双击左键清空控制点");
@@ -449,12 +540,12 @@ void COpenGLDemoView::OnLButtonUp(UINT nFlags, CPoint point)
 
 void COpenGLDemoView::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
-	/*
+	
 	MessageBox(L"清空控制点，重画");
-	ctrlPoints.clear();
-	isReady = false;
+	points.clear();
+    result->halfedges.clear();
 	Invalidate(FALSE);
-	*/
+	
 	CView::OnLButtonDblClk(nFlags,point);
 }
 

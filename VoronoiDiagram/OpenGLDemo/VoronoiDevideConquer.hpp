@@ -353,39 +353,249 @@ vector<Site*> processConvexHull(vector<Site*> &convexhull)
 
 
 //set the edge to whose previous edge
-void connectLeftEdge(Halfedge *edge, Site &site)
+void connectLeftEdge(Halfedge *edge, Face* face)
 {
-    Halfedge * initialLeft = site.incFace()->incEdge();
+    Vertex * end = edge->twinEdge()->oriVertex();
+    if(end == infiniteVertex)// the edge's next NULL
+        return;
+
+
+    Halfedge * initialLeft = face->incEdge();
     //set next
-    while(initialLeft!= NULL && initialLeft->prevEdge() != NULL)
+    while(initialLeft!= NULL)
     {
+        if(initialLeft->oriVertex()->p == end->p)
+        {
+            edge->SetNextEdge(initialLeft);
+            initialLeft->SetPrevEdge(edge);
+            return;
+        }
         initialLeft = initialLeft->prevEdge();
     }
-    (*initialLeft).SetPrevEdge(edge);
-    edge->SetNextEdge(initialLeft);
-    edge->SetIncFace(site.incFace());
+
+    initialLeft = face->incEdge();
+    while (initialLeft != NULL)
+    {
+        if(initialLeft->twinEdge()->oriVertex()->p == edge->oriVertex()->p)
+        {
+            edge->SetNextEdge(initialLeft);
+            initialLeft->SetPrevEdge(edge);
+            return;
+        }
+        initialLeft = initialLeft->nextEdge();
+    }
 }
 
 //set the edge to whose next edge
-void connectRightEdge(Halfedge *edge, Site &site)
+void connectRightEdge(Halfedge *edge, Face *face)
 {
-    Halfedge * initialRight = site.incFace()->incEdge();
-    while (initialRight !=NULL && initialRight->nextEdge() != NULL)
+    if(edge->oriVertex() == infiniteVertex)// the edge's prev NULL
+        return;
+
+    Halfedge * initialRight = face->incEdge();
+
+    while (initialRight !=NULL )
     {
+        if (initialRight->twinEdge()->oriVertex()->p == edge->oriVertex()->p)
+        {
+            (*initialRight).SetNextEdge(edge);
+            edge->SetPrevEdge(initialRight);
+            return;
+        }
         initialRight = initialRight->nextEdge();
     }
-    (*initialRight).SetNextEdge(edge);
-    edge->SetPrevEdge(initialRight);
-    edge->SetIncFace(site.incFace());
+
+    initialRight = face->incEdge();
+    while (initialRight !=NULL )
+    {
+        if (initialRight->oriVertex()->p == edge->twinEdge()->oriVertex()->p)
+        {
+            (*initialRight).SetNextEdge(edge);
+            edge->SetPrevEdge(initialRight);
+            return;
+        }
+        initialRight = initialRight->prevEdge();
+    }
+     
 }
 
+class DevideChain
+{
+public:
+    bool left;
+    Vertex * intersectionV;
+    Halfedge * intersectionEdge;
+    Halfedge * downEdge;//the downEdge  of the chain, store midpoint,directioin
+    DevideChain(bool paraLeft, Vertex * v, Halfedge* l, Halfedge * d):left(paraLeft),intersectionV(v),intersectionEdge(l),downEdge(d){};
+
+    ~DevideChain()
+    {
+    }
+};
+
+void connectWithChain(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right, Site* leftMin, Site * rightMin)
+{
+    Halfedge * lastE1 = new Halfedge();
+    Halfedge * lastE2 = new Halfedge();
+    bool lastLeft = false;//flag the last intersection with right or left
+    //clip
+    for (unsigned int i = 0; i < devideChain.size(); i++)
+    {
+        DevideChain chain = devideChain.at(i);
+        Halfedge * e1 = new Halfedge();
+        Halfedge * e2 = new Halfedge();
+
+        Vector * downDirection = chain.downEdge->direction();
+        Point * mid = chain.downEdge->midPoint();
+        e2->SetDirection(-(*downDirection));
+        e1->SetDirection(downDirection);
+        e1->SetTwinEdge(e2);
+        e2->SetTwinEdge(e1);
+        e2->SetMidPoint(mid);
+        e1->SetMidPoint(mid);
+
+        e2->SetOriVertex(chain.intersectionV);
+
+        if(i == 0)//the bisector vertical line from infinite
+            e1->SetOriVertex(infiniteVertex);
+        else
+            e1->SetOriVertex(devideChain.at(i-1).intersectionV);
+
+        ////fuck begin
+        //e1->SetEndVertex(chain.intersectionV);
+        //if(i == 0 )
+        //    e2->SetEndVertex(infiniteVertex);
+        //else
+        //    e2->SetEndVertex(devideChain.at(i-1).intersectionV);
+        //if(i < devideChain.size() -1)
+        //{
+        //    if(chain.left)
+        //    {
+        //        chain.intersectionEdge->SetEndVertex(chain.intersectionV);
+        //    }else
+        //    {
+        //       chain.intersectionEdge->twinEdge()->SetEndVertex(chain.intersectionV);
+        //    }
+        //}
+        ////fuck end
+
+
+        //the last bisector to add begin
+        if(i == devideChain.size()-1)//the last bisector
+        {
+
+            {
+                if (lastLeft)//both this intersection and the last intersection are with the left sub voronoi diagram
+                {
+                    e2->SetNextEdge(devideChain.at(i-1).intersectionEdge);
+                    devideChain.at(i-1).intersectionEdge->SetPrevEdge(e2);
+                    //lastE2 has set the face,but not set the next edge
+                    
+                }else
+                {
+                    e2->SetNextEdge(lastE2);
+                    lastE2->SetPrevEdge(e2);
+                    lastE2->SetIncFace(leftMin->incFace());
+                }
+            }
+            {
+                if(!lastLeft)//both this intersection and last intersection are with the right sub voronoi diagram
+                {
+                    e1->SetPrevEdge(devideChain.at(i-1).intersectionEdge->twinEdge());
+                    devideChain.at(i-1).intersectionEdge->twinEdge()->SetNextEdge(e1);
+                    //lastE1->SetIncFace(edge->twinEdge()->incFace());//should be the opposite site, infact has been set face above
+                }else
+                {
+                    e1->SetPrevEdge(lastE1);
+                    lastE1->SetNextEdge(e1);
+                    lastE1->SetIncFace(rightMin->incFace());
+                }
+           }
+
+            left->halfedges.push_back(e2);
+            right->halfedges.push_back(e1);
+
+            //lastE2 should set next.
+            if(lastE2->nextEdge() == NULL)
+                connectLeftEdge(lastE2, lastE2->incFace());
+            //lastE1 should set prev
+            if(lastE1->prevEdge() == NULL)
+                connectRightEdge(lastE1, lastE1->incFace());
+            break;
+        }
+        //the last bisector to end
+
+        Halfedge * edge = chain.intersectionEdge;
+        Face *  face = edge->incFace();
+
+        if (chain.left)
+        {
+            e2->SetIncFace(edge->incFace());
+            edge->SetNextEdge(e2);//edge.twin.setorgin = intersecionV
+            edge->twinEdge()->SetOriVertex(chain.intersectionV);
+            e2->SetPrevEdge(edge);
+
+            if(i != 0)
+            {
+                if (lastLeft)//both this intersection and the last intersection are with the left sub voronoi diagram
+                {
+                    e2->SetNextEdge(devideChain.at(i-1).intersectionEdge);
+                    devideChain.at(i-1).intersectionEdge->SetPrevEdge(e2);
+                    //lastE2 has set the face but not set next edge
+                }else
+                {
+                    e2->SetNextEdge(lastE2);
+                    lastE2->SetPrevEdge(e2);
+                    lastE2->SetIncFace(e2->incFace());// the same site
+                }
+            }
+            lastLeft = true;
+        }else//right 
+        {
+            e1->SetIncFace(edge->incFace());
+            edge->SetPrevEdge(e1);
+            e1->SetNextEdge(edge);//edge .set orivertex to e1.ending
+            edge->SetOriVertex(chain.intersectionV);
+
+            if(i != 0)
+            {
+                if(!lastLeft)//both this intersection and last intersection are with the right sub voronoi diagram
+                {
+                    e1->SetPrevEdge(devideChain.at(i-1).intersectionEdge->twinEdge());
+                    devideChain.at(i-1).intersectionEdge->twinEdge()->SetNextEdge(e1);
+                    //lastE1->SetIncFace(edge->twinEdge()->incFace());//should be the opposite site, infact has been set face above
+                }else
+                {
+                    e1->SetPrevEdge(lastE1);
+                    lastE1->SetNextEdge(e1);
+                    lastE1->SetIncFace(e1->incFace());// the same site
+                }
+            }
+            lastLeft = false;
+        }
+        if(i != 0)
+        {
+            //lastE2 should set next.
+            if(lastE2->nextEdge() == NULL)
+                connectLeftEdge(lastE2, lastE2->incFace());
+            //lastE1 should set prev
+            if(lastE1->prevEdge() == NULL)
+                connectRightEdge(lastE1, lastE1->incFace());
+        }
+        left->halfedges.push_back(e2);
+        right->halfedges.push_back(e1);
+        lastE1 = e1;
+        lastE2 = e2;
+    }
+}
 
 VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 {
     VoronoiDiagram * result = new VoronoiDiagram();
 
-    vector<Vertex*> chain_vertex;
-    chain_vertex.push_back(infiniteVertex);
+    //vector<Vertex*> chain_vertex;
+    //chain_vertex.push_back(infiniteVertex);
+    vector<DevideChain> devideChain;
 
     //the convex hull is cw
     //left->convex_hull = GeometryTool::getConvexHullUseGrahamScan(left->sites);
@@ -411,9 +621,12 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
         Vector d = Vector(rightp - leftp);
         d.mf_normalize();//direction:point to the up
         d = -d.getPerpendicularVector();//direction:point to the down 
-
-        Vertex* lastV = chain_vertex.at(chain_vertex.size()-1);
-
+        
+        Vertex* lastV;
+        if(devideChain.size() > 0)
+             lastV = devideChain.at(devideChain.size()-1).intersectionV;
+        else
+            lastV = infiniteVertex;
 
         Point* leftIntersectP = new Point(DBL_MIN, DBL_MIN);
  
@@ -507,117 +720,47 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             edge = edge->prevEdge();
         }
 
-       
+        Halfedge * downEdge = new Halfedge();
+        downEdge->SetDirection(d);
+        downEdge->SetMidPoint(mid);
+
         //intersect with left vorinoi first
         if(leftIntersectP->y() > rightIntersectP->y())
         {
 
             Vertex * v = new Vertex(leftIntersectP);
-            
-            Halfedge * e1 = new Halfedge();//direction point to down
-            e1->SetDirection(d);
-            e1->SetOriVertex(lastV);
-            
-            Halfedge * e2 = new Halfedge();
-            e2->SetDirection(-d);
-            e2->SetOriVertex(v);
-            e1->SetTwinEdge(e2);
-            e2->SetTwinEdge(e1);
-            e1->SetMidPoint(mid);
-            e2->SetMidPoint(mid);
-
-            //the edge intersect ccw
-            Halfedge* edge = leftIntersectionEdge;
-            edge->SetNextEdge(e2);
-            e2->SetPrevEdge(edge);
-            edge->twinEdge()->SetOriVertex(v);
-
-            Face * f = leftMax->incFace();
-            edge->SetIncFace(f);//no need 
-            e2->SetIncFace(f);
-            e1->SetIncFace(rightMax->incFace());
-
-            connectRightEdge(e1, *rightMax);
-            connectLeftEdge(e2, *leftMax);
-
-            left->halfedges.push_back(e2);
-            right->halfedges.push_back(e1);
-            left->vertices.push_back(v);
+            v->SetIncEdge(leftIntersectionEdge);
+           
 
             if(!tobottom)
-                leftMax = edge->twinEdge()->incFace()->site();
-            
-            chain_vertex.push_back(v);
+                leftMax = leftIntersectionEdge->twinEdge()->incFace()->site();
+            //chain_vertex.push_back(v);
+            devideChain.push_back(DevideChain(true, v, leftIntersectionEdge, downEdge));
 
-            //clip update
         }else if (leftIntersectP->y() < rightIntersectP->y())//intersect with right voronoi first
         {
             Vertex * v = new Vertex(rightIntersectP);
-            Halfedge * e1 = new Halfedge();//direction point to down
-            e1->SetDirection(d);
-            e1->SetOriVertex(lastV);
-
-            Halfedge * e2 = new Halfedge();
-            e2->SetDirection(-d);
-            e2->SetOriVertex(v);
-            e1->SetTwinEdge(e2);
-            e2->SetTwinEdge(e1);
-            e1->SetMidPoint(mid);
-            e2->SetMidPoint(mid);
-
-            Halfedge* edge = rightIntersectionEdge;
-            edge->SetOriVertex(v);
-
-            edge->SetPrevEdge(e1);
-            e1->SetNextEdge(edge);
-            edge->SetIncFace(rightMax->incFace());
-            e1->SetIncFace(rightMax->incFace());
-            e2->SetIncFace(leftMax->incFace());
-
-            connectRightEdge(e1, *rightMax);
-            connectLeftEdge(e2, *leftMax);
-
-            left->halfedges.push_back(e2);
-            right->halfedges.push_back(e1);
-            right->vertices.push_back(v);
+            v->SetIncEdge(rightIntersectionEdge);
 
             if(!tobottom)
-                rightMax = edge->twinEdge()->incFace()->site();
+                rightMax = rightIntersectionEdge->twinEdge()->incFace()->site();
 
-            v->SetIncEdge(edge);
-            chain_vertex.push_back(v);
+            devideChain.push_back(DevideChain(false, v, rightIntersectionEdge, downEdge));
             //clicp update
-        }else// at the same time. mostly the last intersection
+        }else// no intersection below the last intersection point, 
         {
-            Halfedge * e1 = new Halfedge();//direction point to down
-            e1->SetDirection(d);
-            e1->SetOriVertex(lastV);
+            tobottom = true;
 
-            Halfedge * e2 = new Halfedge();
-            e2->SetDirection(-d);
-            e2->SetOriVertex(new Vertex(infinitePoint));
-            e1->SetTwinEdge(e2);
-            e2->SetTwinEdge(e1);
-            e1->SetMidPoint(mid);
-            e2->SetMidPoint(mid);
-
-          
-            connectLeftEdge(e2, *leftMax);
-            connectRightEdge(e1, *rightMax);
-            
-            
-            left->halfedges.push_back(e2);
-            right->halfedges.push_back(e1);
-
+            devideChain.push_back(DevideChain(false, infiniteVertex, NULL, downEdge));
+ 
         }
         //chain to the lower bound
     }while(!tobottom); 
 
-
+    connectWithChain(devideChain, left, right, leftMin, rightMin);
     //left right to result
     result = (*right) + (*left);
     return result;
-
 }
 
 VoronoiDiagram* partition(vector<Point> &origin, int left, int right)
