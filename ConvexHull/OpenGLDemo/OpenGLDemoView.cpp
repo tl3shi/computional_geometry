@@ -317,7 +317,7 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
             S.push(T.top());
             T.pop();
         }
-        unsigned int size = S.size();
+        int size = S.size();
         for(int i = 0; i < size; i++)
         {
             convexPoints.push_back(S.top());
@@ -584,6 +584,7 @@ IMPLEMENT_DYNCREATE(COpenGLDemoView, CView)
             int y = rect.Height() - point.y;
 
             CP_Vector2D p = CP_Vector2D(x, y);
+            //should unique
             points.push_back(p);
         }
         Invalidate(TRUE);
