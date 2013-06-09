@@ -293,13 +293,13 @@ void drawResultFUCK()
                 Point np = edge->twinEdge()->oriVertex()->p;
                 glVertex3d(np.x(), np.y(), 0);
                 
-                //fuck begin
-                if(edge->endVertex != NULL && edge->endVertex->p != infinitePoint)
-                {
-                    p = edge->endVertex->p;
-                    glVertex3d(p.x(), p.y(), 0);
-                    continue;
-                }
+                ////fuck begin
+                //if(edge->endVertex != NULL && edge->endVertex->p != infinitePoint)
+                //{
+                //    p = edge->endVertex->p;
+                //    glVertex3d(p.x(), p.y(), 0);
+                //    continue;
+                //}
                 //fuck end
 
                 p = np + (-*(edge->direction())) * INFINITE_LENGTH;
@@ -332,14 +332,14 @@ void drawResultFUCK()
             }
             glVertex3d(p.x(), p.y(), 0);
 
-            //fuck begin
-            if(edge->endVertex != NULL && edge->endVertex->p != infinitePoint)
-            {
-                p = edge->endVertex->p;
-                glVertex3d(p.x(), p.y(), 0);
-                continue;
-            }
-            //fuck end
+            ////fuck begin
+            //if(edge->endVertex != NULL && edge->endVertex->p != infinitePoint)
+            //{
+            //    p = edge->endVertex->p;
+            //    glVertex3d(p.x(), p.y(), 0);
+            //    continue;
+            //}
+            ////fuck end
 
             Point np = p + (*(edge->direction())) * INFINITE_LENGTH;
             glVertex3d(np.x(), np.y(), 0);
