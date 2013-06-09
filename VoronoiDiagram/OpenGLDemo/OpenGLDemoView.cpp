@@ -598,10 +598,15 @@ void COpenGLDemoView::OnDevideConquer()
     testPoints.push_back(Point(200,200)+Point(10,50));
     points = testPoints;*/
 
+
+    if(points.size() > 0 )
+        writetofile();
+
     VoronoiDiagram * vd = new VoronoiDiagram();
     result = vd->DevideConquerConstruction(points);
     Invalidate(TRUE);
-    
+    if(true)// if not throw exception above, should write the sorted points 
+        return;
     if(points.size() > 0 )
         writetofile();
 

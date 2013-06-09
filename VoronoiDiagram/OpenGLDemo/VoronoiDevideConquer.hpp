@@ -434,6 +434,53 @@ public:
     }
 };
 
+void deleteNextEdge(vector<Halfedge*> &edges,  Halfedge * edge)
+{
+    Halfedge * nextEdge = edge->nextEdge();
+    if (nextEdge != NULL)
+    {
+        vector<Halfedge*>::iterator it;
+        it = edges.begin(); 
+        while (it!= edges.end())
+        {
+            if((*nextEdge) == *(*it) || (*nextEdge->twinEdge()) == *(*it))
+            {
+             it = edges.erase(it);    
+            }else
+            {
+                it++;
+            }
+        }
+        //edge->nextEdge()->SetPrevEdge(NULL);No need, has delete, none can access it
+        edge->SetNextEdge(NULL);
+        delete nextEdge;
+    }
+
+}
+
+void deletePrevEdge(vector<Halfedge*> edges,  Halfedge * edge)
+{
+    Halfedge * prevEdge = edge->prevEdge();
+    if (prevEdge != NULL)
+    {
+        vector<Halfedge*>::iterator it;
+        it = edges.begin(); 
+        while (it!= edges.end())
+        {
+            if((*prevEdge) == *(*it) || (*prevEdge->twinEdge()) == *(*it))
+            {
+                it = edges.erase(it);    
+            }else
+            {
+                it++;
+            }
+            //edge->prevEdge()->SetNextEdge(NULL);//no need, none can access it.
+            edge->SetPrevEdge(NULL);
+            //delete prevEdge;
+        }
+    }
+}
+
 void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right, Site* leftMin, Site * rightMin)
 {
     Halfedge * lastE1 = new Halfedge();
@@ -462,29 +509,11 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
         else
             e1->SetOriVertex(devideChain.at(i-1).intersectionV);
 
-        ////fuck begin
-        //e1->SetEndVertex(chain.intersectionV);
-        //if(i == 0 )
-        //    e2->SetEndVertex(infiniteVertex);
-        //else
-        //    e2->SetEndVertex(devideChain.at(i-1).intersectionV);
-        //if(i < devideChain.size() -1)
-        //{
-        //    if(chain.left)
-        //    {
-        //        chain.intersectionEdge->SetEndVertex(chain.intersectionV);
-        //    }else
-        //    {
-        //       chain.intersectionEdge->twinEdge()->SetEndVertex(chain.intersectionV);
-        //    }
-        //}
-        ////fuck end
 
 
         //the last bisector to add begin
         if(i == devideChain.size()-1)//the last bisector
         {
-
             {
                 if (lastLeft)//both this intersection and the last intersection are with the left sub voronoi diagram
                 {
@@ -507,12 +536,6 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             left->halfedges.push_back(e2);
             right->halfedges.push_back(e1);
 
-            ////lastE2 should set next.
-            //if(lastE2->nextEdge() == NULL)
-            //    connectLeftEdge(lastE2, lastE2->incFace());
-            ////lastE1 should set prev
-            //if(lastE1->prevEdge() == NULL)
-            //    connectRightEdge(lastE1, lastE1->incFace());
             break;
         }
         //the last bisector to end
@@ -523,6 +546,14 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
         if (chain.left)
         {
             e2->SetIncFace(edge->incFace());
+            //before set,should delete whether the edge's next edge 
+            //should have the condition: next's orgin is on the left of e1 --- to left is not ok....
+            //if(GeometryTool::to_left(Point(edge->nextEdge()->oriVertex()->p.x() - TOLERANCE, edge->nextEdge()->oriVertex()->p.x())
+            //                         ,e1->oriVertex()->p, e2->oriVertex()->p))
+            //if edge.next.orgin != last last intersection
+            //if(i>0 && edge->nextEdge() != NULL && edge->nextEdge()->oriVertex()->p != devideChain.at(i-1).intersectionV->p)
+                deleteNextEdge(left->halfedges, edge);
+
             edge->SetNextEdge(e2);//edge.twin.setorgin = intersecionV
             edge->twinEdge()->SetOriVertex(chain.intersectionV);
             e2->SetPrevEdge(edge);
@@ -531,6 +562,7 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             {
                 if (lastLeft)//both this intersection and the last intersection are with the left sub voronoi diagram
                 {
+                    
                     e2->SetNextEdge(devideChain.at(i-1).intersectionEdge->twinEdge());
                     devideChain.at(i-1).intersectionEdge->twinEdge()->SetPrevEdge(e2);
                     //lastE2 has set the face but not set next edge
@@ -547,9 +579,14 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
                 }
             }
             lastLeft = true;
+            left->vertices.push_back(chain.intersectionV);
         }else//right 
         {
             e1->SetIncFace(edge->incFace());
+            //before e1.set next, should delete the edge.prev
+            //if(i>0 && edge->prevEdge() != NULL && edge->prevEdge()->twinEdge()->oriVertex()->p != devideChain.at(i-1).intersectionV->p)
+                deletePrevEdge(right->halfedges, edge);
+
             edge->SetPrevEdge(e1);
             e1->SetNextEdge(edge);//edge .set orivertex to e1.ending
             edge->SetOriVertex(chain.intersectionV);
@@ -574,16 +611,9 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
                 }
             }
             lastLeft = false;
+            right->vertices.push_back(chain.intersectionV);
         }
-        if(i != 0)
-        {
-            ////lastE2 should set next.
-            //if(lastE2->nextEdge() == NULL)
-            //    connectLeftEdge(lastE2, lastE2->incFace());
-            ////lastE1 should set prev
-            //if(lastE1->prevEdge() == NULL)
-            //    connectRightEdge(lastE1, lastE1->incFace());
-        }
+ 
         left->halfedges.push_back(e2);
         right->halfedges.push_back(e1);
         lastE1 = e1;
@@ -594,27 +624,15 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
 void connectWithChain(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right, Site* leftMin, Site * rightMin)
 {
     connectWithChainOld(devideChain, left, right, leftMin, rightMin);
-    //remote the edge who is single
-    vector<Halfedge*>::iterator it;
-    for (it = left->halfedges.begin(); it!=left->halfedges.end();)
+    
+    for (unsigned int i = 0; i < left->vertices.size(); i++)
     {
-        if((*it)->nextEdge() == NULL && (*it)->prevEdge() == NULL)
-        {
-            it = left->halfedges.erase(it);
-        }else{
-            it++;
-        }
+        Vertex * v = left->vertices.at(i);
+
+
     }
 
-    for (it = right->halfedges.begin(); it!=right->halfedges.end();)
-    {
-        if((*it)->nextEdge() == NULL && (*it)->prevEdge() == NULL)
-        {
-            it = right->halfedges.erase(it);
-        }else{
-            it++;
-        }
-    }
+
 }
 
 
@@ -623,8 +641,6 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 {
     VoronoiDiagram * result = new VoronoiDiagram();
 
-    //vector<Vertex*> chain_vertex;
-    //chain_vertex.push_back(infiniteVertex);
     vector<DevideChain> devideChain;
 
     //the convex hull is cw
