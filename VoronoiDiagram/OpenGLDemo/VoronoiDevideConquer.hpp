@@ -9,6 +9,7 @@
 using namespace std;
 #define INFINITE_LENGTH 1000
 
+#define TOLERANCE 0.001
 
 #ifndef Vector
     typedef Point Vector ;
@@ -506,12 +507,12 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             left->halfedges.push_back(e2);
             right->halfedges.push_back(e1);
 
-            //lastE2 should set next.
-            if(lastE2->nextEdge() == NULL)
-                connectLeftEdge(lastE2, lastE2->incFace());
-            //lastE1 should set prev
-            if(lastE1->prevEdge() == NULL)
-                connectRightEdge(lastE1, lastE1->incFace());
+            ////lastE2 should set next.
+            //if(lastE2->nextEdge() == NULL)
+            //    connectLeftEdge(lastE2, lastE2->incFace());
+            ////lastE1 should set prev
+            //if(lastE1->prevEdge() == NULL)
+            //    connectRightEdge(lastE1, lastE1->incFace());
             break;
         }
         //the last bisector to end
@@ -576,12 +577,12 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
         }
         if(i != 0)
         {
-            //lastE2 should set next.
-            if(lastE2->nextEdge() == NULL)
-                connectLeftEdge(lastE2, lastE2->incFace());
-            //lastE1 should set prev
-            if(lastE1->prevEdge() == NULL)
-                connectRightEdge(lastE1, lastE1->incFace());
+            ////lastE2 should set next.
+            //if(lastE2->nextEdge() == NULL)
+            //    connectLeftEdge(lastE2, lastE2->incFace());
+            ////lastE1 should set prev
+            //if(lastE1->prevEdge() == NULL)
+            //    connectRightEdge(lastE1, lastE1->incFace());
         }
         left->halfedges.push_back(e2);
         right->halfedges.push_back(e1);
@@ -678,7 +679,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
 
             if (t!= NULL && t->y() > leftIntersectP->y()
-                && t->y() < lastV->y())//ensure the intersection point is the NEW highest 
+                && t->y() + TOLERANCE < lastV->y())//ensure the intersection point is the NEW highest 
             {
                 leftIntersectP = t;
                 leftIntersectionEdge = edge;
@@ -698,7 +699,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
             if (t!= NULL && t->y() > leftIntersectP->y()
-                 && t->y() < lastV->y())
+                 && t->y() + TOLERANCE < lastV->y())
             {
                 leftIntersectP = t;
                 leftIntersectionEdge = edge;
@@ -721,7 +722,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
             if (t!= NULL && t->y() > rightIntersectP->y()
-                &&t->y() < lastV->y())
+                &&t->y() + TOLERANCE < lastV->y())
             {
                 rightIntersectP = t;
                 rightIntersectionEdge = edge;
@@ -742,7 +743,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 
             Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
             if (t!= NULL && t->y() > rightIntersectP->y()
-                 && t->y() < lastV->y())
+                 && t->y() + TOLERANCE < lastV->y())
             {
                 rightIntersectP = t;
                 rightIntersectionEdge = initalEdge;
@@ -755,7 +756,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
         downEdge->SetMidPoint(mid);
 
         //intersect with left vorinoi first
-        if(leftIntersectP->y() > rightIntersectP->y())
+        if(leftIntersectP->y() > rightIntersectP->y() + TOLERANCE)
         {
 
             Vertex * v = new Vertex(leftIntersectP);
@@ -767,7 +768,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             //chain_vertex.push_back(v);
             devideChain.push_back(DevideChain(true, v, leftIntersectionEdge, downEdge));
 
-        }else if (leftIntersectP->y() < rightIntersectP->y())//intersect with right voronoi first
+        }else if (leftIntersectP->y() + TOLERANCE < rightIntersectP->y() )//intersect with right voronoi first
         {
             Vertex * v = new Vertex(rightIntersectP);
             v->SetIncEdge(rightIntersectionEdge);
@@ -801,8 +802,9 @@ VoronoiDiagram* partition(vector<Point> &origin, int left, int right)
         return mergeVD(partition(origin, left, (left+right)/2), partition(origin, (left+right)/2 + 1, right));
 }   
 
-VoronoiDiagram* VoronoiDiagram::DevideConquerConstruction( vector< Point > points )
+VoronoiDiagram* VoronoiDiagram::DevideConquerConstruction( vector< Point > &points )
 {
+    //remove TOLERANCE same points should.
     sort(points.begin(), points.end(), &GeometryTool::compareByX);
 
     return partition(points, 0, points.size()-1);

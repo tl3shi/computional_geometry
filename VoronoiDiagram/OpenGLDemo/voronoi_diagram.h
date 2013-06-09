@@ -23,7 +23,7 @@ public:
     void CalcIntersectionVertices( Halfedge* he, Site* site, bool is_in_convex_hull, Vertex* vbegin, Vertex* vend );
     void GenerateNewHalfedges( Site* new_site, Site* site, Halfedge* he1, Halfedge* he2 );
     VoronoiDiagram* IncrementalConstruction( vector< Point* > points );
-    VoronoiDiagram* DevideConquerConstruction( vector< Point > points );
+    VoronoiDiagram* DevideConquerConstruction( vector< Point > &points );
 
  
 

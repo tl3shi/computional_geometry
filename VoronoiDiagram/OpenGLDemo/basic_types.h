@@ -34,11 +34,11 @@ public:
     void operator *= ( double c ) { p_[0] *= c; p_[1] *= c; };
     void operator /= ( double c ) { p_[0] /= c; p_[1] /= c; };
    
-    CString toString()
+    char* toString()
     {
-        CString str;
-        str.Format(L"(%.2f, %.2f) ", p_[0], p_[1]);
-        return str;
+        char* s = new char[20];
+        sprintf(s, "(%.2f, %.2f) ", p_[0], p_[1]);
+        return s;
     }
 
     //the direction perpendicular to this, ccw 90 degree
@@ -221,7 +221,7 @@ class Halfedge
 
 public:
     Halfedge( void ) { twinEdge_ = NULL; oriVertex_ = NULL; incFace_ = NULL; prevEdge_ = NULL; nextEdge_ = NULL; 
-                       midPoint_ = NULL; direction_ = NULL; /*endVertex = NULL;*/ hasDraw=false;};
+                       midPoint_ = NULL; direction_ = NULL; /*endVertex = NULL;*/ hasDraw = false;};
     Halfedge( Halfedge* twinEdge, Vertex* oriVertex, Face* incFace, Halfedge* prevEdge, Halfedge* nextEdge, 
               Point* midPoint, Vector* direction ) 
             { twinEdge_ = twinEdge; oriVertex_ = oriVertex; incFace_ = incFace; prevEdge_ = prevEdge; nextEdge_ = nextEdge; 

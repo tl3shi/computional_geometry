@@ -129,7 +129,7 @@ void drawPoints()
     {
         glColor3d(1, 0, 0);
         Point p = points.at(i);
-        str.Format(L"%d", i);
+        str.Format(_T("%d"), i);
         drawString(p.x(), p.y()+5, str);
     }
 }
@@ -148,7 +148,7 @@ void drawString(int x, int y, CString cstr)
 {
     char * str = (LPSTR)(LPCTSTR)cstr;
     glColor3d(0.0, 0.0, 0.0);
-    int n = strlen(str);  
+    int n = cstr.GetLength();//strlen(cstr);  // the force converter may ensercurity. todo
     //设置要在屏幕上显示字符的起始位置 
     glRasterPos2i(x,y);  
     //逐个显示字符串中的每个字符  
@@ -228,6 +228,7 @@ void drawResult()
                     cout<< i<<":"<<  p.x() << "," << p.y() <<"," << np.x() << "," << np.y() << endl;
                     continue;
                 }
+                assert(false);
             }
             glVertex3d(p.x(), p.y(), 0);
             Point np = p + (*(edge->direction())) * INFINITE_LENGTH;
@@ -237,22 +238,29 @@ void drawResult()
         }
     }
     glEnd();
-    cout.rdbuf(default_buf);   
+    
 
     //draw string
-    return;
-    CString str;
+    //return;
+    char* str = new char[3];
     for (unsigned int i = 0; i < result->halfedges.size(); i++)
     {
         Halfedge * edge = result->halfedges.at(i);
         Point* p = edge->midPoint();
-        str.Format(L"%d", i);
+        sprintf(str, "%d", i);
+        cout << i << p->toString()<< str << endl;
         if(edge->twinEdge()->hasDraw)
-            drawString(p->x(), p->y()-5, str);
-        else
+        {
+            //cout << i << p->toString()<< str << endl;
+            drawString(p->x(), p->y()-10, str);
+            //do not draw....
+        }else
+        {
             drawString(p->x(), p->y(), str);
+        }
         edge->hasDraw = true;
     }
+    cout.rdbuf(default_buf);  
 }
 
 void drawResultFUCK()
@@ -369,7 +377,7 @@ void COpenGLDemoView::OnDraw(CDC* pDC)
     {
         drawResult();
     }
-    drawString(100, 100 , ("tanglei-end"));
+    //drawString(100, 100 , ("tanglei-end"));
 
 	SwapBuffers(pDC->m_hDC);
 	wglMakeCurrent(NULL, NULL);
@@ -490,7 +498,7 @@ int COpenGLDemoView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_hRC = wglCreateContext(dc.m_hDC);
     if(debug)
     {
-        points = readfromfile("pointsout-err.txt");
+        points = readfromfile("pointsout.txt");
         OnDevideConquer();
     }
 	//MessageBox(L"鼠标左键选择控制点位置\r\n右键生成画bezier曲线\r\n双击左键清空控制点");
@@ -589,10 +597,12 @@ void COpenGLDemoView::OnDevideConquer()
     testPoints.push_back(Point(200,200)+Point(40,0));
     testPoints.push_back(Point(200,200)+Point(10,50));
     points = testPoints;*/
-    if(points.size() > 0 )
-        writetofile();
-  
+
     VoronoiDiagram * vd = new VoronoiDiagram();
     result = vd->DevideConquerConstruction(points);
     Invalidate(TRUE);
+    
+    if(points.size() > 0 )
+        writetofile();
+
 }
