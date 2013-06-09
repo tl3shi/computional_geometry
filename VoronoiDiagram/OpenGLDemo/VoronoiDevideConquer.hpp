@@ -551,7 +551,7 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             //if(GeometryTool::to_left(Point(edge->nextEdge()->oriVertex()->p.x() - TOLERANCE, edge->nextEdge()->oriVertex()->p.x())
             //                         ,e1->oriVertex()->p, e2->oriVertex()->p))
             //if edge.next.orgin != last last intersection
-            //if(i>0 && edge->nextEdge() != NULL && edge->nextEdge()->oriVertex()->p != devideChain.at(i-1).intersectionV->p)
+            if(i>0 && edge->nextEdge() != NULL && edge->nextEdge()->oriVertex()->p != devideChain.at(i-1).intersectionV->p)
                 deleteNextEdge(left->halfedges, edge);
 
             edge->SetNextEdge(e2);//edge.twin.setorgin = intersecionV
@@ -584,7 +584,7 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
         {
             e1->SetIncFace(edge->incFace());
             //before e1.set next, should delete the edge.prev
-            //if(i>0 && edge->prevEdge() != NULL && edge->prevEdge()->twinEdge()->oriVertex()->p != devideChain.at(i-1).intersectionV->p)
+            if(i>0 && edge->prevEdge() != NULL && edge->prevEdge()->twinEdge()->oriVertex()->p != devideChain.at(i-1).intersectionV->p)
                 deletePrevEdge(right->halfedges, edge);
 
             edge->SetPrevEdge(e1);
