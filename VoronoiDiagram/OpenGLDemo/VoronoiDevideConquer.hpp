@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "voronoi_diagram.h"
-#include "GeometryTool.hpp"
+
 #include <algorithm>
 #include <assert.h>
 #include <limits>
@@ -21,7 +21,7 @@ using namespace std;
         DBL_MAX, 
         DBL_MAX, 
         NULL );
-    Point infinitePoint = Point( DBL_MAX, DBL_MAX);
+  
 
     VoronoiDiagram*   operator + (const VoronoiDiagram &u, const VoronoiDiagram  &v)
     {
@@ -63,6 +63,25 @@ using namespace std;
 
         return result;
 
+    }
+    int checkDCEL(vector<Halfedge*> &edges)
+    {
+        for (unsigned int i = 0; i < edges.size(); i++)
+        {
+            Halfedge *edge = edges.at(i);
+            if(edge->incFace() == NULL)
+                return i;
+            if(edge->twinEdge() == NULL)
+                return i;
+            if(edge->twinEdge()->incFace() == NULL)
+                return i;
+            if(edge->nextEdge() != NULL)
+                if (!(edge->nextEdge()->oriVertex()->p == edge->twinEdge()->oriVertex()->p)) return i;
+            if(edge->prevEdge() != NULL)
+                if (!(edge->oriVertex()->p == edge->prevEdge()->twinEdge()->oriVertex()->p)) return i;
+
+        }
+        return edges.size();
     }
 
 VoronoiDiagram* smallVD(vector<Point> &origin, int left, int right)
@@ -287,12 +306,8 @@ VoronoiDiagram* smallVD(vector<Point> &origin, int left, int right)
  //reference: http://www.personal.kent.edu/~rmuhamma/Compgeometry/MyCG/Voronoi/DivConqVor/divConqVor.htm
 void tangentLine(vector<Site*> left, vector<Site*> right, Site &leftMax, Site  &leftMin, Site &rightMax, Site  &rightMin)
 {
-    /*Point leftMax = Point(numeric_limits<double>::min(),numeric_limits<double>::min());
-    Point leftMin = Point(numeric_limits<double>::max(),numeric_limits<double>::max());
-    Point rightMax = Point(numeric_limits<double>::min(),numeric_limits<double>::min());
-    Point rightMin = Point(numeric_limits<double>::max(),numeric_limits<double>::max());*/
-    
-    ////the sites have already sorted by x, increasing ? points...but the site may not
+    ////the points have already sorted by x, increasing . points...but the site may not
+    //the left and right is convexhull 
     double min =  DBL_MAX;
     double max = DBL_MIN;
 
@@ -328,11 +343,11 @@ void tangentLine(vector<Site*> left, vector<Site*> right, Site &leftMax, Site  &
     while (flag)
     {
         flag = false;
-        while(GeometryTool::to_left(right.at((right_leftmost_index-1) % right.size()), left.at(left_rightmost_index), right.at(right_leftmost_index)))
+        
+        while(GeometryTool::to_left(right.at(((right_leftmost_index-1)+right.size())%right.size()), left.at(left_rightmost_index), right.at(right_leftmost_index)))
         {
-            right_leftmost_index  = (right_leftmost_index - 1) % right.size();
-            //if(right_leftmost_index == -1)
-            //    right_leftmost_index = right.size() - 1;
+            //right_leftmost_index  = (right_leftmost_index - 1) % right.size(); in c, not right,but python ok (-1)%3=-1 in c, while in python equals 2;
+            right_leftmost_index = ((right_leftmost_index - 1) + right.size()) % right.size();
             flag = true;
         }
         //left ccw ,use +
@@ -360,9 +375,9 @@ void tangentLine(vector<Site*> left, vector<Site*> right, Site &leftMax, Site  &
             flag =true;
         }
         //left ccw ,use +
-        while(GeometryTool::to_left(left.at((left_rightmost_index-1) % left.size()), right.at(right_leftmost_index), left.at(left_rightmost_index)))
+        while(GeometryTool::to_left(left.at((left_rightmost_index-1 + left.size()) % left.size()), right.at(right_leftmost_index), left.at(left_rightmost_index)))
         {
-            left_rightmost_index = (left_rightmost_index -1 ) %left.size();
+            left_rightmost_index = (left_rightmost_index -1 + left.size() ) %left.size();
             flag = true;
         }
     }
@@ -371,6 +386,7 @@ void tangentLine(vector<Site*> left, vector<Site*> right, Site &leftMax, Site  &
     rightMin = *right.at(right_leftmost_index);
 
 }
+//convert cw convexhull to ccw
 vector<Site*> processConvexHull(vector<Site*> &convexhull)
 {
     vector<Site*> result;
@@ -472,7 +488,10 @@ public:
     Vertex * intersectionV;
     Halfedge * intersectionEdge;
     Halfedge * downEdge;//the downEdge  of the chain, store midpoint,directioin
-    DevideChain(bool paraLeft, Vertex * v, Halfedge* l, Halfedge * d):left(paraLeft),intersectionV(v),intersectionEdge(l),downEdge(d){};
+    Site* leftsite;
+    Site * rightsite; // store the devide that who intersection
+    DevideChain(bool paraLeft, Vertex * v, Halfedge* l, Halfedge * d,
+                Site* le, Site * ri):left(paraLeft),intersectionV(v),intersectionEdge(l),downEdge(d),leftsite(le),rightsite(ri){};
 
     ~DevideChain()
     {
@@ -490,7 +509,11 @@ void deleteNextEdge(vector<Halfedge*> &edges,  Halfedge * edge)
         {
             if((*nextEdge) == *(*it) || (*nextEdge->twinEdge()) == *(*it))
             {
-             it = edges.erase(it);    
+                if((*it)->nextEdge() != NULL)
+                    (*it)->nextEdge()->SetPrevEdge(NULL);
+                if((*it)->prevEdge() != NULL)
+                    (*it)->prevEdge()->SetNextEdge(NULL);
+                it = edges.erase(it);    
             }else
             {
                 it++;
@@ -514,6 +537,10 @@ void deletePrevEdge(vector<Halfedge*> edges,  Halfedge * edge)
         {
             if((*prevEdge) == *(*it) || (*prevEdge->twinEdge()) == *(*it))
             {
+                if((*it)->nextEdge() != NULL)
+                    (*it)->nextEdge()->SetPrevEdge(NULL);
+                if((*it)->prevEdge() != NULL)
+                    (*it)->prevEdge()->SetNextEdge(NULL);
                 it = edges.erase(it);    
             }else
             {
@@ -546,6 +573,8 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
         e2->SetTwinEdge(e1);
         e2->SetMidPoint(mid);
         e1->SetMidPoint(mid);
+        e1->SetIncFace(chain.rightsite->incFace());
+        e2->SetIncFace(chain.leftsite->incFace());
 
         e2->SetOriVertex(chain.intersectionV);
 
@@ -571,7 +600,6 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
                 {
                     e2->SetNextEdge(lastE2);
                     lastE2->SetPrevEdge(e2);
-                    lastE2->SetIncFace(leftMin->incFace());
 
                     e1->SetPrevEdge(lastE1->nextEdge()->twinEdge());
                     lastE1->nextEdge()->twinEdge()->SetNextEdge(e1);
@@ -590,19 +618,24 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
 
         if (chain.left)
         {
-            e2->SetIncFace(edge->incFace());
+           
             //before set,should delete whether the edge's next edge 
             //should have the condition: next's orgin is on the left of e1 --- to left is not ok....
             //if(GeometryTool::to_left(Point(edge->nextEdge()->oriVertex()->p.x() - TOLERANCE, edge->nextEdge()->oriVertex()->p.x())
             //                         ,e1->oriVertex()->p, e2->oriVertex()->p))
             //if edge.next.orgin != last last intersection
             if(i>0 && edge->nextEdge() != NULL && edge->nextEdge()->oriVertex()->p != devideChain.at(i-1).intersectionV->p)
+            {
+                assert(checkDCEL(left->halfedges) == left->halfedges.size());
                 deleteNextEdge(left->halfedges, edge);
+                assert(checkDCEL(left->halfedges) == left->halfedges.size());
 
+            }
             edge->SetNextEdge(e2);//edge.twin.setorgin = intersecionV
             edge->twinEdge()->SetOriVertex(chain.intersectionV);
             e2->SetPrevEdge(edge);
-
+            checkDCEL(left->halfedges);
+            
             if(i != 0)
             {
                 if (lastLeft)//both this intersection and the last intersection are with the left sub voronoi diagram
@@ -617,7 +650,6 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
                 {
                     e2->SetNextEdge(lastE2);
                     lastE2->SetPrevEdge(e2);
-                    lastE2->SetIncFace(e2->incFace());// the same site
                     
                     e1->SetPrevEdge(lastE1->nextEdge()->twinEdge());
                     lastE1->nextEdge()->twinEdge()->SetNextEdge(e1);
@@ -627,14 +659,19 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             left->vertices.push_back(chain.intersectionV);
         }else//right 
         {
-            e1->SetIncFace(edge->incFace());
+            
             //before e1.set next, should delete the edge.prev
             if(i>0 && edge->prevEdge() != NULL && edge->prevEdge()->twinEdge()->oriVertex()->p != devideChain.at(i-1).intersectionV->p)
+            {
+                assert(checkDCEL(right->halfedges) == right->halfedges.size());
                 deletePrevEdge(right->halfedges, edge);
+                assert(checkDCEL(right->halfedges) == right->halfedges.size());
+            }
 
             edge->SetPrevEdge(e1);
             e1->SetNextEdge(edge);//edge .set orivertex to e1.ending
             edge->SetOriVertex(chain.intersectionV);
+            assert(checkDCEL(right->halfedges) == right->halfedges.size());
 
             if(i != 0)
             {
@@ -649,7 +686,7 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
                 {
                     e1->SetPrevEdge(lastE1);
                     lastE1->SetNextEdge(e1);
-                    lastE1->SetIncFace(e1->incFace());// the same site
+                    
 
                     e2->SetNextEdge(lastE2->prevEdge()->twinEdge());
                     lastE2->prevEdge()->twinEdge()->SetPrevEdge(e2);
@@ -665,35 +702,21 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
         lastE2 = e2;
     }
 }
-bool checkHalfedge(Halfedge * edge)
-{
-    return false;
-};
-bool checkDCEL(vector<Halfedge*> &edges)
-{
-    for (unsigned int i = 0; i < edges.size(); i++)
-    {
-        Halfedge *edge = edges.at(i);
-        if(edge->incFace() == NULL)
-            return false;
-        if(edge->twinEdge() == NULL)
-            return false;
-        if(edge->twinEdge()->incFace() == NULL)
-            return false;
-        if(edge->nextEdge() != NULL)
-            if (!(edge->nextEdge()->oriVertex()->p == edge->twinEdge()->oriVertex()->p)) return false;
-        if(edge->prevEdge() != NULL)
-            if (!(edge->oriVertex()->p == edge->prevEdge()->twinEdge()->oriVertex()->p)) return false;
 
-    }
-    return true;
-}
 
 void connectWithChain(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right, Site* leftMin, Site * rightMin)
 {
+    int sthLeftWrong = checkDCEL(left->halfedges);
+    int sthRightWrong = checkDCEL(right->halfedges);
+    assert(sthLeftWrong == left->halfedges.size());
+    assert(sthRightWrong == right->halfedges.size());
+
     connectWithChainOld(devideChain, left, right, leftMin, rightMin);
    
-   
+    sthLeftWrong = checkDCEL(left->halfedges);
+    sthRightWrong = checkDCEL(right->halfedges);
+    assert(sthLeftWrong == left->halfedges.size());
+    assert(sthRightWrong == right->halfedges.size());
 }
 
 
@@ -701,17 +724,17 @@ void connectWithChain(vector<DevideChain> &devideChain, VoronoiDiagram* left, Vo
 VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 {
      //check every edge has face....for further use in change leftmax and rightmax
-    assert(checkDCEL(left->halfedges) == true);
-    assert(checkDCEL(right->halfedges) == true);
-
+    
     VoronoiDiagram * result = new VoronoiDiagram();
     vector<DevideChain> devideChain;
 
-    //the convex hull is cw
+    //the convex hull is cw [ATTENTION]
     left->convex_hull = GeometryTool::getConvexHullUseGrahamScan(left->sites);
     right->convex_hull = GeometryTool::getConvexHullUseGrahamScan(right->sites);
-    //process the convex hull to ccw, and the first one is lowest then leftest
-    
+    //process the convex hull to ccw,  
+    left->convex_hull =  processConvexHull(left->convex_hull);
+    right->convex_hull = processConvexHull(right->convex_hull);
+
     Site *leftMax = new Site();
     Site *leftMin = new Site();
     Site *rightMax = new Site();
@@ -756,7 +779,9 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Point* edge_p = edge->midPoint();//*(left->halfedges[i]->midPoint());
             Vector* edge_d = edge->direction();//*(left->halfedges[i]->direction());
             
-            Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
+            //Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
+            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, *edge);
+
             //to get a higher t
             if (t!= NULL && t->y() > leftIntersectP->y() + TOLERANCE 
                 && t->y() + TOLERANCE < lastV->y())//ensure the intersection point is the NEW highest 
@@ -779,7 +804,8 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Point* edge_p = edge->midPoint();  
             Vector* edge_d = edge->direction();  
 
-            Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
+            //Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
+            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, *edge);
             if (t!= NULL && t->y() > leftIntersectP->y() + TOLERANCE 
                  && t->y() + TOLERANCE < lastV->y())
             {
@@ -802,7 +828,9 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Point* edge_p = edge->midPoint(); //*(right->halfedges[i]->midPoint());
             Vector* edge_d = edge->direction(); //*(right->halfedges[i]->direction());
 
-            Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
+            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, *edge);
+            //Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
+
             if (t!= NULL && t->y() > rightIntersectP->y() + TOLERANCE 
                 &&t->y() + TOLERANCE < lastV->y())
             {
@@ -812,8 +840,8 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             edge = edge->nextEdge();
             if(edge != NULL && (*edge) == *(initalEdge))
             {
-                break;
                 hasDetectAll = true;
+                break;
             }
         }
         
@@ -823,12 +851,14 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Point* edge_p = edge->midPoint();  
             Vector* edge_d = edge->direction();  
 
-            Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
+            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, *edge);
+            //Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
+
             if (t!= NULL && t->y() > rightIntersectP->y() + TOLERANCE 
                  && t->y() + TOLERANCE < lastV->y())
             {
                 rightIntersectP = t;
-                rightIntersectionEdge = initalEdge;
+                rightIntersectionEdge = edge;
             }
             edge = edge->prevEdge();
         }
@@ -845,26 +875,28 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Vertex * v = new Vertex(leftIntersectP);
             v->SetIncEdge(leftIntersectionEdge);
 
+            devideChain.push_back(DevideChain(true, v, leftIntersectionEdge, downEdge, leftMax, rightMax));
+
             if(!tobottom)
                 leftMax = leftIntersectionEdge->twinEdge()->incFace()->site();
-
-            devideChain.push_back(DevideChain(true, v, leftIntersectionEdge, downEdge));
 
         }else if (leftIntersectP->y() + TOLERANCE < rightIntersectP->y() )//intersect with right voronoi first
         {
             Vertex * v = new Vertex(rightIntersectP);
             v->SetIncEdge(rightIntersectionEdge);
 
+            devideChain.push_back(DevideChain(false, v, rightIntersectionEdge, downEdge, leftMax, rightMax));
+
             if(!tobottom)
                 rightMax = rightIntersectionEdge->twinEdge()->incFace()->site();
 
-            devideChain.push_back(DevideChain(false, v, rightIntersectionEdge, downEdge));
+          
             //clicp update
         }else// no intersection below the last intersection point, 
         {
             tobottom = true;
 
-            devideChain.push_back(DevideChain(false, infiniteVertex, NULL, downEdge));
+            devideChain.push_back(DevideChain(false, infiniteVertex, NULL, downEdge, leftMax, rightMax));
  
         }
         //chain to the lower bound

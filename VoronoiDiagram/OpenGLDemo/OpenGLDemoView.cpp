@@ -28,9 +28,11 @@
 #include <cstdlib>
 #include <fstream>
 
+ Point infinitePoint = Point(DBL_MAX, DBL_MAX);
 
 bool debug = true;
 using namespace std;
+
 
 vector<Point> points;
 VoronoiDiagram * result = NULL;
@@ -161,7 +163,7 @@ const int INFINITE_LENGTH  = 2000;
 //if the half edge's top infomation is all right, may be the following function is OK
 void drawResult()
 {
-    Point infinitePoint = Point(DBL_MAX, DBL_MAX);
+   
     glLineWidth(1);
     glBegin(GL_LINES);
     glColor3d(1, 0, 0);
@@ -241,7 +243,7 @@ void drawResult()
     
 
     //draw string
-    //return;
+    return;
     char* str = new char[3];
     for (unsigned int i = 0; i < result->halfedges.size(); i++)
     {
@@ -265,7 +267,6 @@ void drawResult()
 
 void drawResultFUCK()
 {
-    Point infinitePoint = Point(DBL_MAX, DBL_MAX);
     glLineWidth(1);
     glBegin(GL_LINES);
     glColor3d(1, 0, 0);
@@ -589,7 +590,6 @@ void COpenGLDemoView::OnLButtonDblClk(UINT nFlags, CPoint point)
 }
 
 
-
 void COpenGLDemoView::OnDevideConquer()
 {
     /*vector<Point> testPoints;
@@ -598,16 +598,20 @@ void COpenGLDemoView::OnDevideConquer()
     testPoints.push_back(Point(200,200)+Point(10,50));
     points = testPoints;*/
 
-
     if(points.size() > 0 )
         writetofile();
 
     VoronoiDiagram * vd = new VoronoiDiagram();
     result = vd->DevideConquerConstruction(points);
     Invalidate(TRUE);
-    if(true)// if not throw exception above, should write the sorted points 
-        return;
+    
     if(points.size() > 0 )
         writetofile();
+
+
+    ///if(true)// if not throw exception above, should write the sorted points 
+    //    return;
+    //if(points.size() > 0 )
+    //    writetofile();
 
 }

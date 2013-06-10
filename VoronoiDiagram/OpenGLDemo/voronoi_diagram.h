@@ -7,6 +7,7 @@ using std::list;
 using std::vector;
 
 #include "basic_types.h"
+#include "GeometryTool.hpp"
 
 class VoronoiDiagram
 {

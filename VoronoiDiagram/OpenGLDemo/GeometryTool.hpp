@@ -12,6 +12,10 @@
 
 using namespace std;
 
+
+
+
+
 class AngleComparer
 {
     Point leftest_and_lowest;
@@ -58,6 +62,7 @@ public:
     }
 
 };
+
 
 class GeometryTool
 {
@@ -117,7 +122,7 @@ public:
     }
 
     //return line(p0,p1) intersect with line(p2, p3)
-   static Point* intersect(const Point &p0, const Point &p1, const Point &p2, const Point &p3, bool isSegment=false)
+   static Point* intersect(const Point &p0, const Point &p1, const Point &p2, const Point &p3)
     {
         Vector d1 = Vector(p0 - p1);
         Vector d2 = Vector(p2 - p3);
@@ -132,9 +137,42 @@ public:
         Point * retval = new Point((d1 * parameter_on_l1 + p1 + d2 * parameter_on_l2 + p2) / 2.0);
         return retval;
     }
+   //check whether point is in segment(start, end)'s rectangle region
+   static bool isInRectangle(const Point &p, const Point &start, const Point &end)
+   {
+       if (end == infinitePoint) 
+       {
+           if ((start.x() <= end.x() && p.x() >= start.x()) ||
+               (start.x() >= end.x() && p.x() <= start.x())) return true;
+       }
+       if (start == infinitePoint)
+       {
+           if ((start.x() <= end.x() && p.x() <= end.x()) ||
+               (start.x() >= end.x() && p.x() >= end.x())) return true;
+       }
+       return ((start.x() <= end.x() && p.x() >= start.x() && p.x() <= end.x()) ||
+           (start.x() >= end.x() && p.x() <= start.x() && p.x() >= end.x()))
+           && ((start.y() <= end.y() && p.y() >= start.y() && p.y() <= end.y()) ||
+           (start.y() >= end.y() && p.y() <= start.y() && p.y() >= end.y()));
+   }
+
+    //point vector (line),bisector  with segment(start ,edn)
+    static Point* intersectionSegment(const Point &p1, Vector &d1, const Point &start, const Point &end)
+    {
+        Point * ret = intersectPointVector(p1, d1, start, Vector(end-start));
+        return isInRectangle(*ret, start, end) ? ret : NULL;
+    }
+    
+    //point vector (line),bisector  with halfedge
+    static Point* intersectionWithHalfedge(const Point &p1, Vector &d1, const Halfedge &edge)
+    {
+        Point * ret = intersectPointVector(p1, d1, *(edge.midPoint()), *(edge.direction()));
+
+        return isInRectangle(*ret, (edge.oriVertex()->p), (edge.twinEdge()->oriVertex()->p)) ? ret : NULL;
+    }
 
     //intersection line p1 ,direction d1 
-    static Point*  intersectPointVector(const Point &p1,  Vector &d1, const Point &p2, Vector &d2, bool isSegment=false)
+    static Point*  intersectPointVector(const Point &p1,  Vector &d1, const Point &p2, Vector &d2)
     {
         d1.mf_normalize();
         d2.mf_normalize();

@@ -12,6 +12,7 @@ class Halfedge;
 
 typedef Point Vector;
 
+extern Point infinitePoint;
 class Point
 {
 public:
@@ -128,6 +129,7 @@ public:
 private:
     double p_[2];
 };
+
 
 // 点积
 static double  operator * (const Point& u, const Point& v)
