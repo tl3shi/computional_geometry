@@ -526,7 +526,7 @@ void deleteNextEdge(vector<Halfedge*> &edges,  Halfedge * edge)
 
 }
 
-void deletePrevEdge(vector<Halfedge*> edges,  Halfedge * edge)
+void deletePrevEdge(vector<Halfedge*> &edges,  Halfedge * edge)
 {
     Halfedge * prevEdge = edge->prevEdge();
     if (prevEdge != NULL)
@@ -634,7 +634,7 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             edge->SetNextEdge(e2);//edge.twin.setorgin = intersecionV
             edge->twinEdge()->SetOriVertex(chain.intersectionV);
             e2->SetPrevEdge(edge);
-            checkDCEL(left->halfedges);
+            assert(checkDCEL(left->halfedges) == left->halfedges.size());
             
             if(i != 0)
             {
@@ -667,11 +667,18 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
                 deletePrevEdge(right->halfedges, edge);
                 assert(checkDCEL(right->halfedges) == right->halfedges.size());
             }
-
+            
+            assert(checkDCEL(right->halfedges) == right->halfedges.size());
             edge->SetPrevEdge(e1);
             e1->SetNextEdge(edge);//edge .set orivertex to e1.ending
             edge->SetOriVertex(chain.intersectionV);
-            assert(checkDCEL(right->halfedges) == right->halfedges.size());
+            if(edge->twinEdge()->nextEdge() != NULL)
+                edge->twinEdge()->nextEdge()->SetOriVertex(chain.intersectionV);
+            if(edge->prevEdge()->twinEdge() != NULL)
+                edge->prevEdge()->twinEdge()->SetOriVertex(chain.intersectionV);
+
+            int tttt = checkDCEL(right->halfedges) ;
+            assert(tttt == right->halfedges.size());
 
             if(i != 0)
             {
