@@ -603,6 +603,28 @@ void COpenGLDemoView::OnDevideConquer()
 
     VoronoiDiagram * vd = new VoronoiDiagram();
     result = vd->DevideConquerConstruction(points);
+    
+    //ofstream outf("halfedges.address.txt");
+    //streambuf *default_buf=cout.rdbuf();   
+    //cout.rdbuf( outf.rdbuf() );   
+    //for (unsigned int i = 0; i < points.size(); i++)
+    //{
+    //    Point p = points.at(i);
+    //    cout << p.x() << "," << p.y() << endl;
+    //}
+
+    //for (unsigned int i = 0; i < result->halfedges.size(); i++)
+    //{
+    //    Halfedge *e = result->halfedges[i];
+    //    if(e->prevEdge() != NULL)
+    //    {
+    //        //the address should the same
+    //        cout << e->oriVertex()  << ",";
+    //        cout << e->prevEdge()->oriVertex()  << endl;
+    //    }
+    //}
+    //cout.rdbuf(default_buf);
+
     Invalidate(TRUE);
     
     if(points.size() > 0 )

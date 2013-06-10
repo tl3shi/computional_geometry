@@ -140,16 +140,18 @@ public:
    //check whether point is in segment(start, end)'s rectangle region
    static bool isInRectangle(const Point &p, const Point &start, const Point &end)
    {
+       if(start == infinitePoint && end == infinitePoint)
+           return true;
+
        if (end == infinitePoint) 
        {
-           if ((start.x() <= end.x() && p.x() >= start.x()) ||
-               (start.x() >= end.x() && p.x() <= start.x())) return true;
+           if ( p.x() >= start.x()) return true;
        }
        if (start == infinitePoint)
        {
-           if ((start.x() <= end.x() && p.x() <= end.x()) ||
-               (start.x() >= end.x() && p.x() >= end.x())) return true;
+           if (p.x() <= end.x()) return true;
        }
+        
        return ((start.x() <= end.x() && p.x() >= start.x() && p.x() <= end.x()) ||
            (start.x() >= end.x() && p.x() <= start.x() && p.x() >= end.x()))
            && ((start.y() <= end.y() && p.y() >= start.y() && p.y() <= end.y()) ||
