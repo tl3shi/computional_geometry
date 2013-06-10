@@ -9,7 +9,9 @@
 using namespace std;
 #define INFINITE_LENGTH 1000
 
-#define TOLERANCE 0.001
+#ifndef TOLERANCE 0.001
+    #define TOLERANCE 0.001
+#endif // !TOLERANCE 0.001
 
 #ifndef Vector
     typedef Point Vector ;
@@ -282,7 +284,7 @@ VoronoiDiagram* smallVD(vector<Point> &origin, int left, int right)
     return result;
 }
 
- 
+ //reference: http://www.personal.kent.edu/~rmuhamma/Compgeometry/MyCG/Voronoi/DivConqVor/divConqVor.htm
 void tangentLine(vector<Site*> left, vector<Site*> right, Site &leftMax, Site  &leftMin, Site &rightMax, Site  &rightMin)
 {
     /*Point leftMax = Point(numeric_limits<double>::min(),numeric_limits<double>::min());
@@ -290,41 +292,84 @@ void tangentLine(vector<Site*> left, vector<Site*> right, Site &leftMax, Site  &
     Point rightMax = Point(numeric_limits<double>::min(),numeric_limits<double>::min());
     Point rightMin = Point(numeric_limits<double>::max(),numeric_limits<double>::max());*/
     
+    ////the sites have already sorted by x, increasing ? points...but the site may not
     double min =  DBL_MAX;
     double max = DBL_MIN;
 
+    //find the rightest of left's site
+    int left_rightmost_index;
     for (unsigned int i = 0; i < left.size(); i++)
     {
         Point t = left[i]->p;
-        if(t.y() < min)
+        if(t.x() > max)
         {
-            leftMin = *left[i];
-            min = t.y();
-        }
-        if(t.y() > max)
-        {
-            leftMax = *left[i];
-            max = t.y();
+            left_rightmost_index = i;
+            max = t.x();
         }
     }
-    
-    min =  DBL_MAX;
-    max = DBL_MIN;
-
+    //find the leftmost of right's site
+    int right_leftmost_index;
     for (unsigned int i = 0; i < right.size(); i++)
     {
         Point t = right[i]->p;
-        if(t.y() < min)
+        if(t.x() < min)
         {
-            rightMin = *right[i];
-            min = t.y();
-        }
-        if(t.y() > max)
-        {
-            rightMax = *right[i];
-            max = t.y();
+            right_leftmost_index = i;
+            min = t.x();
         }
     }
+
+    int left_rightmost_index_bak = left_rightmost_index;
+    int right_leftmost_index_bak = right_leftmost_index;
+
+    //the first index of the convexhull  is random ,but all is ccw 
+    bool flag = true;//flag whether zig-zag have changes.
+    //zig-zag to get the tangent line, upper bound 
+    while (flag)
+    {
+        flag = false;
+        while(GeometryTool::to_left(right.at((right_leftmost_index-1) % right.size()), left.at(left_rightmost_index), right.at(right_leftmost_index)))
+        {
+            right_leftmost_index  = (right_leftmost_index - 1) % right.size();
+            //if(right_leftmost_index == -1)
+            //    right_leftmost_index = right.size() - 1;
+            flag = true;
+        }
+        //left ccw ,use +
+        while(GeometryTool::to_left(left.at((left_rightmost_index+1) % left.size()), left.at(left_rightmost_index), right.at(right_leftmost_index)))
+        {
+            left_rightmost_index = (left_rightmost_index+1) % left.size();
+            flag = true;
+        }
+    }
+    leftMax = *left.at(left_rightmost_index);
+    rightMax = *right.at(right_leftmost_index);
+
+
+    left_rightmost_index = left_rightmost_index_bak;
+    right_leftmost_index = right_leftmost_index_bak;
+
+    //zig-zag to get the tangent line, lower bound ,left should cw, right should ccw
+    flag = true;
+    while (flag)
+    {
+        flag = false;
+        while(GeometryTool::to_left(right.at((right_leftmost_index+1)%right.size()), right.at(right_leftmost_index), left.at(left_rightmost_index)))
+        {
+            right_leftmost_index = (right_leftmost_index+1) % right.size();
+            flag =true;
+        }
+        //left ccw ,use +
+        while(GeometryTool::to_left(left.at((left_rightmost_index-1) % left.size()), right.at(right_leftmost_index), left.at(left_rightmost_index)))
+        {
+            left_rightmost_index = (left_rightmost_index -1 ) %left.size();
+            flag = true;
+        }
+    }
+
+    leftMin = *left.at(left_rightmost_index);
+    rightMin = *right.at(right_leftmost_index);
+
 }
 vector<Site*> processConvexHull(vector<Site*> &convexhull)
 {
@@ -453,7 +498,7 @@ void deleteNextEdge(vector<Halfedge*> &edges,  Halfedge * edge)
         }
         //edge->nextEdge()->SetPrevEdge(NULL);No need, has delete, none can access it
         edge->SetNextEdge(NULL);
-        delete nextEdge;
+        //delete nextEdge;
     }
 
 }
@@ -663,15 +708,15 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
     vector<DevideChain> devideChain;
 
     //the convex hull is cw
-    //left->convex_hull = GeometryTool::getConvexHullUseGrahamScan(left->sites);
-    //right->convex_hull = GeometryTool::getConvexHullUseGrahamScan(right->sites);
+    left->convex_hull = GeometryTool::getConvexHullUseGrahamScan(left->sites);
+    right->convex_hull = GeometryTool::getConvexHullUseGrahamScan(right->sites);
     //process the convex hull to ccw, and the first one is lowest then leftest
     
     Site *leftMax = new Site();
     Site *leftMin = new Site();
     Site *rightMax = new Site();
     Site *rightMin = new Site(); 
-    tangentLine(left->sites, right->sites, *leftMax,  *leftMin,  *rightMax, *rightMin);
+    tangentLine(left->convex_hull, right->convex_hull, *leftMax,  *leftMin,  *rightMax, *rightMin);
    
     bool tobottom = false;
     //not zig zag, but the site opposite
@@ -842,7 +887,7 @@ VoronoiDiagram* partition(vector<Point> &origin, int left, int right)
 VoronoiDiagram* VoronoiDiagram::DevideConquerConstruction( vector< Point > &points )
 {
     //remove TOLERANCE same points should.
-    sort(points.begin(), points.end(), &GeometryTool::compareByX);
+    sort(points.begin(), points.end(), &GeometryTool::comparePointByX);
 
     return partition(points, 0, points.size()-1);
 

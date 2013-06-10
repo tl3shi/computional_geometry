@@ -82,11 +82,18 @@ public:
         return p0.y() < p1.y();
     }
 
-    static int compareByX(Point &p0, Point &p1)
+    static int comparePointByX(Point &p0, Point &p1)
     {
         if (p0.x() == p1.x())
             return p0.y() < p1.y();
         return p0.x() < p1.x();
+    }
+
+    static int compareSiteByX(Site* &p0, Site* &p1)
+    {
+        if (p0->x() == p1->x())
+            return p0->y() < p1->y();
+        return p0->x() < p1->x();
     }
 
     //test if po is on the left of p2p3
