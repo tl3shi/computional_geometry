@@ -257,9 +257,6 @@ public:
             convexPoints.push_back(S.top());
             S.pop();//size is change, cannot use i < S.size()
         }
-
-        delete s0;
-        delete s1;
         return convexPoints;
     }
 };
