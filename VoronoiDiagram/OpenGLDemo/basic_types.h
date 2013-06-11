@@ -35,6 +35,13 @@ public:
     void operator *= ( double c ) { p_[0] *= c; p_[1] *= c; };
     void operator /= ( double c ) { p_[0] /= c; p_[1] /= c; };
    
+    //used for the set<Point>
+    bool operator < (const Point & point) const
+    {
+        if(*this == point) return false;
+        return this->x() == point.x() ? this->y() < point.y() : this->x() < point.x();
+    }
+
     char* toString()
     {
         char* s = new char[20];
@@ -73,7 +80,7 @@ public:
     //
     friend inline bool operator == ( const Point& p1, const Point& p2 ){
 
-        return ( ( p1.p_[0] == p2.p_[0] ) && ( p1.p_[1] == p2.p_[1] ) );
+        return (abs(p1.p_[0] - p2.p_[0] < 0.1 ) && ( abs(p1.p_[1] - p2.p_[1])) < 0.1);
     };
     //
 
@@ -251,7 +258,7 @@ public:
     {
         //cannot use nextedge == nextedge, may be in infinite loop
         return (p1.direction() == p2.direction() && p1.oriVertex()->p == p2.oriVertex()->p
-            &&(*p1.midPoint()) == *(p2.midPoint()) );
+            &&(*p1.midPoint()) == *(p2.midPoint()) && p1.incFace()->site()->p == p2.incFace()->site()->p);
 
 
     };

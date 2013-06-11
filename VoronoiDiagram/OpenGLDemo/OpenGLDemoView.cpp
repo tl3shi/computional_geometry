@@ -28,7 +28,10 @@
 #include <cstdlib>
 #include <fstream>
 
- Point infinitePoint = Point(DBL_MAX, DBL_MAX);
+#include <set>
+set<Point> pointset;
+
+Point infinitePoint = Point(DBL_MAX, DBL_MAX);
 
 bool debug = true;
 using namespace std;
@@ -61,6 +64,7 @@ END_MESSAGE_MAP()
 void initLights();
 void drawString(int x, int y, char* str);
 void drawString(int x, int y, CString cstr);
+void processPoints();
 
 // COpenGLDemoView ¹¹Ôì/Îö¹¹
 
@@ -127,12 +131,12 @@ void drawPoints()
     }
     glEnd();
 
-    CString str;
+    char * str = new char[3];
     for (unsigned int i=0; i < points.size(); i++)
     {
         glColor3d(1, 0, 0);
         Point p = points.at(i);
-        str.Format(_T("%d"), i);
+        sprintf(str, "%d", i);
         drawString(p.x(), p.y()+5, str);
     }
 }
@@ -159,11 +163,9 @@ void drawString(int x, int y, CString cstr)
         glutBitmapCharacter(GLUT_BITMAP_8_BY_13, *(str+i)); 
 }
 
-
 //if the half edge's top infomation is all right, may be the following function is OK
 void drawResult()
 {
-   
     glLineWidth(1);
     glBegin(GL_LINES);
     glColor3d(1, 0, 0);
@@ -247,7 +249,7 @@ void drawResult()
     
 
     //draw string
-    return;
+    //return;
     char* str = new char[3];
     for (unsigned int i = 0; i < result->halfedges.size(); i++)
     {
@@ -375,7 +377,9 @@ void COpenGLDemoView::OnDraw(CDC* pDC)
     
 	glClearColor(0,0,0,0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
- 
+    
+    processPoints();
+
     drawPoints();
     drawString(0, 0 , ("tanglei-begin"));
     if (result != NULL)
@@ -575,7 +579,8 @@ void COpenGLDemoView::OnLButtonUp(UINT nFlags, CPoint point)
 		int x = point.x;
 		int y = rect.Height() - point.y;
 
-	    points.push_back(Point(x, y));
+	    //points.push_back(Point(x, y));
+        pointset.insert(Point(x, y));
     }
 	Invalidate(TRUE);
 	
@@ -592,7 +597,27 @@ void COpenGLDemoView::OnLButtonDblClk(UINT nFlags, CPoint point)
 	
 	CView::OnLButtonDblClk(nFlags,point);
 }
+const double POINT_TOLERANCE = 0.1; 
+bool pointComp(const Point &p0, const Point &p1)
+{
+    if (abs(p0.x()-p1.x()) < POINT_TOLERANCE
+        && abs(p1.y()-p0.y()) < POINT_TOLERANCE)
+        return true;
+    return false;
+}
 
+void processPoints()
+{
+    if(pointset.size() == 0)//may read from file...for test..
+    {
+        for (unsigned int i = 0; i < points.size(); i++)
+        {
+            pointset.insert(points[i]);
+        }
+    }
+    points.resize(pointset.size());
+    std::copy(pointset.begin(), pointset.end(), points.begin());
+}
 
 void COpenGLDemoView::OnDevideConquer()
 {
@@ -601,6 +626,11 @@ void COpenGLDemoView::OnDevideConquer()
     testPoints.push_back(Point(200,200)+Point(40,0));
     testPoints.push_back(Point(200,200)+Point(10,50));
     points = testPoints;*/
+
+    //preprocess the points data, unique.
+
+    processPoints();
+
 
     if(points.size() > 0 )
         writetofile();

@@ -497,13 +497,19 @@ public:
     {
     }
 };
-
-void deleteNextEdge(vector<Halfedge*> &edges,  Halfedge * edge)
+void deleteNextEdgeWithCondition(vector<Halfedge*> &edges, Halfedge * edge, Halfedge * e2)
 {
-    //return;
     Halfedge * nextEdge = edge->nextEdge();
-    if (nextEdge != NULL)
+    if(nextEdge == NULL) return;
+    bool toleft =  GeometryTool::to_left(nextEdge->oriVertex()->p, e2);
+    bool on_line  = GeometryTool::point_online(nextEdge->oriVertex()->p, e2);
+    
+    if (!toleft && !on_line)
     {
+        if(nextEdge->nextEdge() != NULL)
+        {
+            deleteNextEdgeWithCondition(edges, nextEdge, e2); //with condition should
+        }
         vector<Halfedge*>::iterator it;
         it = edges.begin(); 
         while (it!= edges.end())
@@ -512,8 +518,38 @@ void deleteNextEdge(vector<Halfedge*> &edges,  Halfedge * edge)
             {
                 if((*it)->nextEdge() != NULL)
                     (*it)->nextEdge()->SetPrevEdge(NULL);
-                if((*it)->prevEdge() != NULL)
+                if(NULL != (*it)->prevEdge())
                     (*it)->prevEdge()->SetNextEdge(NULL);
+                /* if((*it)->twinEdge() != NULL && (*it)->twinEdge()->nextEdge()!= NULL)
+                (*it)->twinEdge()->nextEdge()->SetPrevEdge(NULL);
+                if((*it)->twinEdge() != NULL && (*it)->twinEdge()->prevEdge() != NULL)
+                (*it)->twinEdge()->prevEdge()->SetNextEdge(NULL); */
+                it = edges.erase(it);    
+            }else
+            {
+                it++;
+            }
+        }
+        edge->SetNextEdge(NULL);
+        edge->twinEdge()->SetPrevEdge(NULL);
+        //delete nextEdge;
+    }
+
+}
+
+void deleteNextEdgeXXX(vector<Halfedge*> &edges,  Halfedge * edge)
+{
+      Halfedge * nextEdge = edge->nextEdge();
+    /*if(nextEdge != NULL)
+    deleteNextEdge(edges, nextEdge);*/ //with condition should
+    if (nextEdge != NULL)
+    {
+        vector<Halfedge*>::iterator it;
+        it = edges.begin(); 
+        while (it!= edges.end())
+        {
+            if((*nextEdge) == *(*it) || (*nextEdge->twinEdge()) == *(*it))
+            {
                 it = edges.erase(it);    
             }else
             {
@@ -522,17 +558,25 @@ void deleteNextEdge(vector<Halfedge*> &edges,  Halfedge * edge)
         }
         //edge->nextEdge()->SetPrevEdge(NULL);No need, has delete, none can access it
         edge->SetNextEdge(NULL);
+        edge->twinEdge()->SetPrevEdge(NULL);
         //delete nextEdge;
     }
-
 }
 
-void deletePrevEdge(vector<Halfedge*> &edges,  Halfedge * edge)
+void deletePrevEdgeWithCondition(vector<Halfedge*> &edges,  Halfedge * edge, Halfedge * e2)
 {
-    //return;
     Halfedge * prevEdge = edge->prevEdge();
-    if (prevEdge != NULL)
+    if(prevEdge == NULL)
+        return;
+
+    bool toleft = GeometryTool::to_left(prevEdge->twinEdge()->oriVertex()->p, e2);
+    bool on_line = GeometryTool::point_online(prevEdge->twinEdge()->oriVertex()->p, e2); 
+    if(toleft && !on_line)
     {
+        if(prevEdge->prevEdge() != NULL)
+           deletePrevEdgeWithCondition(edges, prevEdge, e2);
+        
+        //delete
         vector<Halfedge*>::iterator it;
         it = edges.begin(); 
         while (it!= edges.end())
@@ -541,17 +585,52 @@ void deletePrevEdge(vector<Halfedge*> &edges,  Halfedge * edge)
             {
                 if((*it)->nextEdge() != NULL)
                     (*it)->nextEdge()->SetPrevEdge(NULL);
-                if((*it)->prevEdge() != NULL)
+                if(NULL != (*it)->prevEdge())
                     (*it)->prevEdge()->SetNextEdge(NULL);
+                /*
+                if((*it)->twinEdge() != NULL && (*it)->twinEdge()->nextEdge()!= NULL)
+                (*it)->twinEdge()->nextEdge()->SetPrevEdge(NULL);
+                if((*it)->twinEdge() != NULL && (*it)->twinEdge()->prevEdge() != NULL)
+                (*it)->twinEdge()->prevEdge()->SetNextEdge(NULL); */
+
+                it = edges.erase(it);   
+            }else
+            {
+                it++;
+            }
+        }
+        edge->SetPrevEdge(NULL);
+        edge->twinEdge()->SetNextEdge(NULL);
+        //delete prevEdge;
+    }
+}
+
+
+void deletePrevEdgeXXX(vector<Halfedge*> &edges,  Halfedge * edge)
+{
+    //return;
+    Halfedge * prevEdge = edge->prevEdge();
+    assert(prevEdge->prevEdge() == NULL);
+    //if(prevEdge != NULL){
+    //    deletePrevEdge(edges, prevEdge); the left conditino should given
+    //}
+    if (prevEdge != NULL)
+    {
+        vector<Halfedge*>::iterator it;
+        it = edges.begin(); 
+        while (it!= edges.end())
+        {
+            if((*prevEdge) == *(*it) || (*prevEdge->twinEdge()) == *(*it))
+            {
                 it = edges.erase(it);    
             }else
             {
                 it++;
             }
-            //edge->prevEdge()->SetNextEdge(NULL);//no need, none can access it.
-            edge->SetPrevEdge(NULL);
-            //delete prevEdge;
         }
+        edge->SetPrevEdge(NULL);
+        edge->twinEdge()->SetNextEdge(NULL);
+        //delete prevEdge;
     }
 }
 
@@ -631,10 +710,9 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             
             if(edge->nextEdge() != NULL)
             {
-                bool toleft =  GeometryTool::to_left(edge->nextEdge()->oriVertex()->p, e2);
-                if (!toleft)
-                    deleteNextEdge(left->halfedges, edge);
+                 deleteNextEdgeWithCondition(left->halfedges, edge, e2);
             }
+
 
             edge->SetNextEdge(e2);//edge.twin.setorgin = intersecionV
             edge->twinEdge()->SetOriVertex(chain.intersectionV);
@@ -670,12 +748,7 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             //    && edge->prevEdge() != lastE1->prevEdge())
             if(edge->prevEdge() != NULL)
             {
-                bool toleft = GeometryTool::to_left(edge->prevEdge()->twinEdge()->oriVertex()->p, e2);
-                if(toleft)
-                {
-                    deletePrevEdge(right->halfedges, edge);
-                    deletedEdge = true;
-                }
+                deletePrevEdgeWithCondition(right->halfedges, edge, e2);
             }
             
             edge->SetPrevEdge(e1);
@@ -790,7 +863,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Vector* edge_d = edge->direction();//*(left->halfedges[i]->direction());
             
             //Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
-            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, *edge);
+            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, edge);
 
             //to get a higher t
             if (t!= NULL && t->y() > leftIntersectP->y() + TOLERANCE 
@@ -815,7 +888,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Vector* edge_d = edge->direction();  
 
             //Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
-            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, *edge);
+            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, edge);
             if (t!= NULL && t->y() > leftIntersectP->y() + TOLERANCE 
                  && t->y() + TOLERANCE < lastV->y())
             {
@@ -838,7 +911,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Point* edge_p = edge->midPoint(); //*(right->halfedges[i]->midPoint());
             Vector* edge_d = edge->direction(); //*(right->halfedges[i]->direction());
 
-            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, *edge);
+            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, edge);
             //Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
 
             if (t!= NULL && t->y() > rightIntersectP->y() + TOLERANCE 
@@ -861,7 +934,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             Point* edge_p = edge->midPoint();  
             Vector* edge_d = edge->direction();  
 
-            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, *edge);
+            Point * t = GeometryTool::intersectionWithHalfedge(*mid, d, edge);
             //Point * t = GeometryTool::intersectPointVector(*mid, d, *edge_p, *edge_d);
 
             if (t!= NULL && t->y() > rightIntersectP->y() + TOLERANCE 

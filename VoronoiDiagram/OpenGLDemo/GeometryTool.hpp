@@ -64,7 +64,7 @@ public:
 };
 
 
-const int INFINITE_LENGTH  = 1000;
+const int INFINITE_LENGTH  = 10000;
 
 class GeometryTool
 {
@@ -120,8 +120,23 @@ public:
         Point p1 = edge->oriVertex()->p;
         if(p1 == infinitePoint)
             p1 = *(edge->midPoint()) - (*(edge->direction())) * INFINITE_LENGTH;
-        return ((p2 - p1) ^ (p0 - p1)) > 0;
+        return ((p2 - p1) ^ (p0 - p1)) > TOLERANCE;
     }
+
+    bool static point_online(const Point &p0, const Halfedge * edge)
+    {
+        //p0p1 * p2p1 * sin(theta)
+        Point p2 = edge->twinEdge()->oriVertex()->p;
+        if(p2 == infinitePoint)
+            p2 = *(edge->midPoint()) + (*(edge->direction())) * INFINITE_LENGTH;
+        Point p1 = edge->oriVertex()->p;
+        if(p1 == infinitePoint)
+            p1 = *(edge->midPoint()) - (*(edge->direction())) * INFINITE_LENGTH;
+        double parallel = isParallel(Vector(p0-p1), Vector(p2-p1));
+        if(!parallel) return false;
+        return isInRectangle(p0, p1, p2);
+    }
+
 
     bool static to_left(Site* p0,  Site *p1,  Site *p2)
     {
@@ -160,11 +175,13 @@ public:
 
        if (end == infinitePoint) 
        {
-           if ( p.x() >= start.x()) return true;
+           if ((start.x() <= end.x() && p.x() >= start.x()) ||
+               (start.x() >= end.x() && p.x() <= start.x())) return true;
        }
        if (start == infinitePoint)
        {
-           if (p.x() <= end.x()) return true;
+           if ((start.x() <= end.x() && p.x() <= end.x()) ||
+               (start.x() >= end.x() && p.x() >= end.x())) return true;
        }
         
        return ((start.x() <= end.x() && p.x() >= start.x() && p.x() <= end.x()) ||
@@ -182,15 +199,23 @@ public:
     }
     
     //point vector (line),bisector  with halfedge
-    static Point* intersectionWithHalfedge(const Point &p1, Vector &d1, const Halfedge &edge)
+    static Point* intersectionWithHalfedge(const Point &p1, Vector &d1, const Halfedge* edge)
     {
-        Point * ret = intersectPointVector(p1, d1, *(edge.midPoint()), *(edge.direction()));
+        Point * ret = intersectPointVector(p1, d1, *(edge->midPoint()), *(edge->direction()));
         if(ret == NULL) return NULL;
-        bool ok = isInRectangle(*ret, (edge.oriVertex()->p), (edge.twinEdge()->oriVertex()->p));
+
+        Point start = edge->oriVertex()->p;
+        if(start == infinitePoint)
+            start = *(edge->midPoint()) - (*(edge->direction())) * INFINITE_LENGTH;
+        Point end = edge->twinEdge()->oriVertex()->p;
+        if(end == infinitePoint)
+            end = *(edge->midPoint()) + (*(edge->direction())) * INFINITE_LENGTH;
+
+        bool ok = isInRectangle(*ret, start, end);
         //something wrong....
         if(ok == false)
         {
-            ok = true;
+            //ok = true;
         }
         return  ok ? ret : NULL;
     }
