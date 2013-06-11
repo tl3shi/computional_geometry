@@ -159,7 +159,6 @@ void drawString(int x, int y, CString cstr)
         glutBitmapCharacter(GLUT_BITMAP_8_BY_13, *(str+i)); 
 }
 
-const int INFINITE_LENGTH  = 2000;
 
 //if the half edge's top infomation is all right, may be the following function is OK
 void drawResult()

@@ -256,6 +256,7 @@ public:
 
     };
     //
+
 public:
     //Vertex*   endVertex;
     bool hasDraw;

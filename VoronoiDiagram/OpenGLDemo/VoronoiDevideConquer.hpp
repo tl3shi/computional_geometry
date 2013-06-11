@@ -7,7 +7,7 @@
 #include <iostream>
 
 using namespace std;
-#define INFINITE_LENGTH 1000
+
 
 #ifndef TOLERANCE 0.001
     #define TOLERANCE 0.001
@@ -626,10 +626,16 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             //if(GeometryTool::to_left(Point(edge->nextEdge()->oriVertex()->p.x() - TOLERANCE, edge->nextEdge()->oriVertex()->p.x())
             //                         ,e1->oriVertex()->p, e2->oriVertex()->p))
             //if edge.next.orgin != last last intersection
-            if(edge->nextEdge() != NULL && edge->nextEdge()->oriVertex()->p != chain.intersectionV->p)
+            /*if(edge->nextEdge() != NULL && edge->nextEdge()->oriVertex()->p != chain.intersectionV->p
+                && edge->nextEdge() != lastE2->nextEdge())*/
+            
+            if(edge->nextEdge() != NULL)
             {
-                deleteNextEdge(left->halfedges, edge);
+                bool toleft =  GeometryTool::to_left(edge->nextEdge()->oriVertex()->p, e2);
+                if (!toleft)
+                    deleteNextEdge(left->halfedges, edge);
             }
+
             edge->SetNextEdge(e2);//edge.twin.setorgin = intersecionV
             edge->twinEdge()->SetOriVertex(chain.intersectionV);
             e2->SetPrevEdge(edge);
@@ -659,11 +665,17 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
         {
             bool deletedEdge = false;
             //before e1.set next, should delete the edge.prev
-            if(edge->prevEdge() != NULL && edge->prevEdge()->twinEdge()->oriVertex()->p != chain.intersectionV->p
-                )
+
+            //if(edge->prevEdge() != NULL && edge->prevEdge()->twinEdge()->oriVertex()->p != chain.intersectionV->p 
+            //    && edge->prevEdge() != lastE1->prevEdge())
+            if(edge->prevEdge() != NULL)
             {
-                deletePrevEdge(right->halfedges, edge);
-                deletedEdge = true;
+                bool toleft = GeometryTool::to_left(edge->prevEdge()->twinEdge()->oriVertex()->p, e2);
+                if(toleft)
+                {
+                    deletePrevEdge(right->halfedges, edge);
+                    deletedEdge = true;
+                }
             }
             
             edge->SetPrevEdge(e1);

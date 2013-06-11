@@ -64,6 +64,8 @@ public:
 };
 
 
+const int INFINITE_LENGTH  = 1000;
+
 class GeometryTool
 {
 public:
@@ -105,6 +107,19 @@ public:
     bool static to_left(const Point &p0, const Point &p1, const Point &p2)
     {
         //p0p1 * p2p1 * sin(theta)
+        return ((p2 - p1) ^ (p0 - p1)) > 0;
+    }
+
+    //test if po is on the left of direction edge
+    bool static to_left(const Point &p0, const Halfedge * edge)
+    {
+        //p0p1 * p2p1 * sin(theta)
+        Point p2 = edge->twinEdge()->oriVertex()->p;
+        if(p2 == infinitePoint)
+            p2 = *(edge->midPoint()) + (*(edge->direction())) * INFINITE_LENGTH;
+        Point p1 = edge->oriVertex()->p;
+        if(p1 == infinitePoint)
+            p1 = *(edge->midPoint()) - (*(edge->direction())) * INFINITE_LENGTH;
         return ((p2 - p1) ^ (p0 - p1)) > 0;
     }
 
@@ -162,6 +177,7 @@ public:
     static Point* intersectionSegment(const Point &p1, Vector &d1, const Point &start, const Point &end)
     {
         Point * ret = intersectPointVector(p1, d1, start, Vector(end-start));
+        if(ret == NULL) return NULL;
         return isInRectangle(*ret, start, end) ? ret : NULL;
     }
     
@@ -169,7 +185,9 @@ public:
     static Point* intersectionWithHalfedge(const Point &p1, Vector &d1, const Halfedge &edge)
     {
         Point * ret = intersectPointVector(p1, d1, *(edge.midPoint()), *(edge.direction()));
+        if(ret == NULL) return NULL;
         bool ok = isInRectangle(*ret, (edge.oriVertex()->p), (edge.twinEdge()->oriVertex()->p));
+        //something wrong....
         if(ok == false)
         {
             ok = true;
