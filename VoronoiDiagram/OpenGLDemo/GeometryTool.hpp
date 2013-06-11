@@ -169,8 +169,12 @@ public:
     static Point* intersectionWithHalfedge(const Point &p1, Vector &d1, const Halfedge &edge)
     {
         Point * ret = intersectPointVector(p1, d1, *(edge.midPoint()), *(edge.direction()));
-
-        return isInRectangle(*ret, (edge.oriVertex()->p), (edge.twinEdge()->oriVertex()->p)) ? ret : NULL;
+        bool ok = isInRectangle(*ret, (edge.oriVertex()->p), (edge.twinEdge()->oriVertex()->p));
+        if(ok == false)
+        {
+            ok = true;
+        }
+        return  ok ? ret : NULL;
     }
 
     //intersection line p1 ,direction d1 

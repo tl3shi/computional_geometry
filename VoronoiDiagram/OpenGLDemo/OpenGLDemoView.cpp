@@ -89,7 +89,7 @@ void writetofile()
     for (unsigned int i = 0; i < points.size(); i++)
     {
         Point p = points.at(i);
-        cout << p.x() << "," << p.y() << endl;
+        cout << p.x() << "," << p.y() << ";" << i <<endl;
     }
     cout.rdbuf(default_buf);
 }
@@ -99,11 +99,12 @@ vector<Point> readfromfile(char* filename)
     ifstream f(filename);
     if(!f.good())
         return ps;
+    int idindex=-1;
     while (!f.eof())
     {
         int x = -1, y = -1;
         char comma;
-        f >> x >> comma >> y;
+        f >> x >> comma >> y >> comma >> idindex;
         if(x == -1 && y == -1) continue;
         ps.push_back(Point(x, y));
     }
@@ -230,7 +231,11 @@ void drawResult()
                     cout<< i<<":"<<  p.x() << "," << p.y() <<"," << np.x() << "," << np.y() << endl;
                     continue;
                 }
-                assert(false);
+                //edge from infinite to a fix point
+                glVertex3d(np.x(), np.y(), 0);
+                p = np - (*(edge->direction())) * INFINITE_LENGTH;
+                glVertex3d(p.x(), p.y(), 0);
+                continue;
             }
             glVertex3d(p.x(), p.y(), 0);
             Point np = p + (*(edge->direction())) * INFINITE_LENGTH;
@@ -604,6 +609,11 @@ void COpenGLDemoView::OnDevideConquer()
     VoronoiDiagram * vd = new VoronoiDiagram();
     result = vd->DevideConquerConstruction(points);
     
+    Invalidate(TRUE);
+
+    if(points.size() > 0 )
+        writetofile();
+
     //ofstream outf("halfedges.address.txt");
     //streambuf *default_buf=cout.rdbuf();   
     //cout.rdbuf( outf.rdbuf() );   
@@ -625,10 +635,7 @@ void COpenGLDemoView::OnDevideConquer()
     //}
     //cout.rdbuf(default_buf);
 
-    Invalidate(TRUE);
     
-    if(points.size() > 0 )
-        writetofile();
 
 
     ///if(true)// if not throw exception above, should write the sorted points 

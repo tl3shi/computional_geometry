@@ -309,7 +309,7 @@ void tangentLine(vector<Site*> left, vector<Site*> right, Site &leftMax, Site  &
     ////the points have already sorted by x, increasing . points...but the site may not
     //the left and right is convexhull 
     double min =  DBL_MAX;
-    double max = DBL_MIN;
+    double max = -DBL_MAX;//DBL_MIN is the min postive value!!!fuck
 
     //find the rightest of left's site
     int left_rightmost_index;
@@ -500,6 +500,7 @@ public:
 
 void deleteNextEdge(vector<Halfedge*> &edges,  Halfedge * edge)
 {
+    //return;
     Halfedge * nextEdge = edge->nextEdge();
     if (nextEdge != NULL)
     {
@@ -528,6 +529,7 @@ void deleteNextEdge(vector<Halfedge*> &edges,  Halfedge * edge)
 
 void deletePrevEdge(vector<Halfedge*> &edges,  Halfedge * edge)
 {
+    //return;
     Halfedge * prevEdge = edge->prevEdge();
     if (prevEdge != NULL)
     {
@@ -624,17 +626,13 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             //if(GeometryTool::to_left(Point(edge->nextEdge()->oriVertex()->p.x() - TOLERANCE, edge->nextEdge()->oriVertex()->p.x())
             //                         ,e1->oriVertex()->p, e2->oriVertex()->p))
             //if edge.next.orgin != last last intersection
-            if(i>0 && edge->nextEdge() != NULL && edge->nextEdge()->oriVertex()->p != devideChain.at(i-1).intersectionV->p)
+            if(edge->nextEdge() != NULL && edge->nextEdge()->oriVertex()->p != chain.intersectionV->p)
             {
-                assert(checkDCEL(left->halfedges) == left->halfedges.size());
                 deleteNextEdge(left->halfedges, edge);
-                assert(checkDCEL(left->halfedges) == left->halfedges.size());
-
             }
             edge->SetNextEdge(e2);//edge.twin.setorgin = intersecionV
             edge->twinEdge()->SetOriVertex(chain.intersectionV);
             e2->SetPrevEdge(edge);
-            assert(checkDCEL(left->halfedges) == left->halfedges.size());
             
             if(i != 0)
             {
@@ -659,26 +657,19 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
             left->vertices.push_back(chain.intersectionV);
         }else//right 
         {
-            
+            bool deletedEdge = false;
             //before e1.set next, should delete the edge.prev
-            if(i>0 && edge->prevEdge() != NULL && edge->prevEdge()->twinEdge()->oriVertex()->p != devideChain.at(i-1).intersectionV->p)
+            if(edge->prevEdge() != NULL && edge->prevEdge()->twinEdge()->oriVertex()->p != chain.intersectionV->p
+                )
             {
-                assert(checkDCEL(right->halfedges) == right->halfedges.size());
                 deletePrevEdge(right->halfedges, edge);
-                assert(checkDCEL(right->halfedges) == right->halfedges.size());
+                deletedEdge = true;
             }
             
-            assert(checkDCEL(right->halfedges) == right->halfedges.size());
             edge->SetPrevEdge(e1);
             e1->SetNextEdge(edge);//edge .set orivertex to e1.ending
             edge->SetOriVertex(chain.intersectionV);
-            if(edge->twinEdge()->nextEdge() != NULL)
-                edge->twinEdge()->nextEdge()->SetOriVertex(chain.intersectionV);
-            if(edge->prevEdge()->twinEdge() != NULL)
-                edge->prevEdge()->twinEdge()->SetOriVertex(chain.intersectionV);
-
-            int tttt = checkDCEL(right->halfedges) ;
-            assert(tttt == right->halfedges.size());
+ 
 
             if(i != 0)
             {
@@ -769,7 +760,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
             lastV = infiniteVertex;
         //the intersection should below the mid point
 
-        Point* leftIntersectP = new Point(DBL_MIN, DBL_MIN);
+        Point* leftIntersectP = new Point(-DBL_MAX, -DBL_MAX);
  
         Halfedge * leftIntersectionEdge;
         Halfedge * rightIntersectionEdge;
@@ -823,7 +814,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
         }
          
 
-        Point* rightIntersectP = new Point(DBL_MIN, DBL_MIN);
+        Point* rightIntersectP = new Point(-DBL_MAX, -DBL_MAX);
 
         initalEdge = rightMax->incFace()->incEdge();
         edge = initalEdge;
