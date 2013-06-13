@@ -1,41 +1,25 @@
 #include "stdafx.h"
 
 #include <limits>
-#include "voronoi_diagram.h"
-#include "VoronoiDevideConquer.hpp"
 
-using namespace std;
+#include "basic_types.h"
+#include "voronoi_diagram.h"
 
 VoronoiDiagram::VoronoiDiagram( void ) {
     sites = vector< Site* >();
     vertices = vector< Vertex* >();
     halfedges = vector< Halfedge* >();
     faces = vector< Face* >();
- 
-    //vertices.push_back( new Vertex(DBL_MAX, DBL_MAX,  NULL ) );
-    //faces.push_back( new Face( NULL, NULL ) );
+
+    vertices.push_back( new Vertex( 
+        DBL_MAX , 
+         DBL_MAX , 
+        NULL ) );
+    faces.push_back( new Face( NULL, NULL ) );
 }
 
-VoronoiDiagram::~VoronoiDiagram( void ) 
-{
-    for (unsigned int i = 0; i < faces.size(); i++)
-    {
-       delete faces[i];
-    }
-    
-    for (unsigned int i = 0; i < sites.size(); i++)
-    {
-       delete sites[i];
-    }
-     
-    for (unsigned int i = 0; i < halfedges.size(); i++)
-    {
-       delete halfedges[i];
-    }
-    for (unsigned int i = 0; i < vertices.size(); i++)
-    {
-        delete vertices[i];
-    }
+VoronoiDiagram::~VoronoiDiagram( void ) {
+
 }
 
 bool VoronoiDiagram::ToLeft( Site* s1, Site* s2, Site* new_site ) {
@@ -82,8 +66,8 @@ bool VoronoiDiagram::IsIntersectionPointOnHalfedge( double x, double y, Halfedge
     }
 }
 
-Face* VoronoiDiagram::LocateInFace( Point* p ) {
-    Site* closest_site = FindClosestSite( p );
+Face* VoronoiDiagram::LocateInFace( VoronoiDiagram* vd, Point* p ) {
+    Site* closest_site = FindClosestSite( vd, p );
     return closest_site->incFace();
 }
 
@@ -151,15 +135,15 @@ bool VoronoiDiagram::UpdateConvexHull( Site* new_site ) {
     }
 }
 
-Site* VoronoiDiagram::FindClosestSite( Point* p ) {
-    if ( this->sites.size() == 0 ) {
+Site* VoronoiDiagram::FindClosestSite( VoronoiDiagram* vd, Point* p ) {
+    if ( vd->sites.size() == 0 ) {
         return NULL;
     } else {
-        vector< Site* >::iterator iter = this->sites.begin();
+        vector< Site* >::iterator iter = vd->sites.begin();
         double min_distance = (*iter)->x() * p->x() + (*iter)->y() * p->y();
         Site* closest_site = *iter;
         iter++;
-        for ( ; iter != this->sites.end(); iter++ ) {
+        for ( ; iter != vd->sites.end(); iter++ ) {
             double temp_distance = (*iter)->x() * p->x() + (*iter)->y() * p->y();
             if ( temp_distance < min_distance ) {
                 closest_site = *iter;
@@ -170,7 +154,8 @@ Site* VoronoiDiagram::FindClosestSite( Point* p ) {
     }
 }
 
-void VoronoiDiagram::CalcIntersectionVertices( Halfedge* new_he, Site* site, bool is_in_convex_hull, Vertex* vbegin, Vertex* vend ) {
+vector<Halfedge*> VoronoiDiagram::CalcIntersectionVertices( Halfedge* new_he, Site* site, bool is_in_convex_hull, Vertex* vbegin, Vertex* vend, Halfedge* he_intersection1, Halfedge* he_intersection_1 ) {
+    vector<Halfedge*> result;
     Halfedge* hebegin = site->incFace()->incEdge();
     double a0, b0, c0, a1, b1, c1, d, x, y;
     a1 = -new_he->direction()->y();
@@ -188,7 +173,9 @@ void VoronoiDiagram::CalcIntersectionVertices( Halfedge* new_he, Site* site, boo
             vbegin->SetY( DBL_MAX );
             vend->SetX( DBL_MAX );
             vend->SetY( DBL_MAX );
-            return;
+            result.push_back(he_intersection1);
+            result.push_back(he_intersection_1);
+            return result;
         } else { // new halfedge and the old one are not parallel
             x = ( b0 * c1 - b1 * c0 ) / d;
             y = ( a1 * c0 - a0 * c1 ) / d;
@@ -199,14 +186,20 @@ void VoronoiDiagram::CalcIntersectionVertices( Halfedge* new_he, Site* site, boo
                     vbegin->SetY( DBL_MAX );
                     vend->SetX( x );
                     vend->SetY( y );
-                    return;
+                    he_intersection1 = hebegin;
+                    result.push_back(he_intersection1);
+                    result.push_back(he_intersection_1);
+                    return result;
             } else {
                 // it's the begin vertex
                 vbegin->SetX( x );
                 vbegin->SetY( y );
                 vend->SetX( DBL_MAX );
                 vend->SetY( DBL_MAX );
-                return;
+                he_intersection_1 = hebegin;
+                result.push_back(he_intersection1);
+                result.push_back(he_intersection_1);
+                return result;
             }
         }
     } else { // this face has more than one halfedge
@@ -230,16 +223,22 @@ void VoronoiDiagram::CalcIntersectionVertices( Halfedge* new_he, Site* site, boo
                         ( y - new_he->midPoint()->y() ) * new_he->direction()->y() > 0 ) {
                             vend->SetX( x );
                             vend->SetY( y );
+                            he_intersection_1 = temp_he;
                             if ( !first_vertex ) {
-                                return;
+                                result.push_back(he_intersection1);
+                                result.push_back(he_intersection_1);
+                                return result;
                             } else {
                                 first_vertex = false;
                             }
                     } else {
                         vbegin->SetX( x );
                         vbegin->SetY( y );
+                        he_intersection1 = temp_he;
                         if ( !first_vertex ) {
-                            return;
+                            result.push_back(he_intersection1);
+                            result.push_back(he_intersection_1);
+                            return result;
                         } else {
                             first_vertex = false;
                         }
@@ -272,18 +271,24 @@ void VoronoiDiagram::CalcIntersectionVertices( Halfedge* new_he, Site* site, boo
                         ( y - new_he->midPoint()->y() ) * new_he->direction()->y() > 0 ) {
                             vend->SetX( x );
                             vend->SetY( y );
+                            he_intersection1 = temp_he;
                             find_end_vertex = true;
                             if ( !first_vertex ) {
-                                return;
+                                result.push_back(he_intersection1);
+                                result.push_back(he_intersection_1);
+                                return result;
                             } else {
                                 first_vertex = false;
                             }
                     } else {
                         vbegin->SetX( x );
                         vbegin->SetY( y );
+                        he_intersection_1 = temp_he;
                         find_begin_vertex = true;
                         if ( !first_vertex ) {
-                            return;
+                            result.push_back(he_intersection1);
+                            result.push_back(he_intersection_1);
+                            return result;
                         } else {
                             first_vertex = false;
                         }
@@ -297,18 +302,22 @@ void VoronoiDiagram::CalcIntersectionVertices( Halfedge* new_he, Site* site, boo
             if ( !find_begin_vertex ) {
                 vbegin->SetX( DBL_MAX );
                 vbegin->SetY( DBL_MAX );
-                return;
+                result.push_back(he_intersection1);
+                result.push_back(he_intersection_1);
+                return result;
             }
             if ( !find_end_vertex ) {
                 vend->SetX( DBL_MAX );
                 vend->SetY( DBL_MAX );
-                return;
+                result.push_back(he_intersection1);
+                result.push_back(he_intersection_1);
+                return result;
             }
         }
     }
 }
 
-VoronoiDiagram* VoronoiDiagram::IncrementalConstruction( vector< Point* > points ) {
+VoronoiDiagram* VoronoiDiagram::IncrementalConstruction( vector< Point* > &points ) {
     VoronoiDiagram* vd = new VoronoiDiagram();
     vector< Point* >::iterator iter;
     for( iter = points.begin(); iter != points.end(); iter++) {
@@ -356,13 +365,15 @@ VoronoiDiagram* VoronoiDiagram::IncrementalConstruction( vector< Point* > points
             vd->faces.push_back( f );
             vd->halfedges.push_back( he1 );
             vd->halfedges.push_back( he2 );
-        } else { 
+        } else {
             // adding the third and after site
             Site* new_site = new Site( *iter );
             Face* new_face = new Face( new_site );
             new_site->SetFace( new_face );
+            vd->sites.push_back( new_site );
+            vd->faces.push_back( new_face );
 
-            Site* closest_site = FindClosestSite( *iter );
+            Site* closest_site = FindClosestSite( vd, *iter );
 
             Halfedge* he1 = new Halfedge();
             Halfedge* he_1 = new Halfedge();
@@ -383,10 +394,327 @@ VoronoiDiagram* VoronoiDiagram::IncrementalConstruction( vector< Point* > points
             Vertex* v1 = new Vertex();
             Vertex* v_1 = new Vertex();
 
+            Halfedge* he_intersection1 = NULL;
+            Halfedge* he_intersection_1 = NULL;
+
             bool is_on_convex_hull = UpdateConvexHull( new_site );
-            CalcIntersectionVertices( he1, closest_site, !is_on_convex_hull, v1, v_1 );
+            vector<Halfedge*> result = CalcIntersectionVertices( he1, closest_site, !is_on_convex_hull, v1, v_1, 
+                he_intersection1, he_intersection_1 );
+            he_intersection1 = result[0];
+            he_intersection_1 = result[1];
+
+            he1->SetOriVertex( v1 );
+            he_1->SetOriVertex( v_1 );
+            he1->SetTwinEdge( he_1 );
+            he_1->SetTwinEdge( he1 );
+            v1->SetIncEdge( he1 );
+            v_1->SetIncEdge( he_1 );
+
+            if ( he_intersection1 == NULL && he_intersection_1 == NULL ) {
+
+            } else if ( he_intersection1 != NULL && he_intersection_1 == NULL ) {
+                Halfedge* tmp = he_intersection1->nextEdge();
+                while ( tmp != he_intersection_1 ) {
+                    tmp->SetPrevEdge( NULL );
+                    tmp->SetNextEdge( NULL );
+                    tmp = tmp->nextEdge();
+                }
+                he_intersection1->nextEdge()->SetPrevEdge( he_1 );
+                he_1->SetNextEdge( he_intersection1->nextEdge() );
+                he_intersection1->SetNextEdge( he_1 );
+                he_1->SetPrevEdge( he_intersection1 );
+            } else if ( he_intersection1 == NULL && he_intersection_1 != NULL ) {
+                Halfedge* tmp = he_intersection_1;
+                while ( tmp->oriVertex()->x() != DBL_MAX ) {
+                }
+                he_intersection_1->prevEdge()->SetNextEdge( he_1 );
+                he_1->SetPrevEdge( he_intersection_1->prevEdge() );
+                he_intersection_1->SetPrevEdge( he_1 );
+                he_1->SetNextEdge( he_intersection_1 );
+            } else {
+                Halfedge* tmp = he_intersection1->nextEdge();
+                while ( tmp != he_intersection_1 ) {
+                    tmp->SetPrevEdge( NULL );
+                    tmp->SetNextEdge( NULL );
+                    tmp = tmp->nextEdge();
+                }
+                he_intersection1->SetNextEdge( he_1 );
+                he_1->SetPrevEdge( he_intersection1 );
+                he_intersection_1->SetPrevEdge( he_1 );
+                he_1->SetNextEdge( he_intersection_1 );
+            }
+
+            vd->halfedges.push_back( he1 );
+            vd->halfedges.push_back( he_1 );
+            vd->vertices.push_back( v1 );
+            vd->vertices.push_back( v_1 );
+
+            Halfedge* first_he = he1;
+            Halfedge* first_he_ = he_1;
+
+            if ( !is_on_convex_hull ) { // in convex hull
+                Site* next_site;
+                Halfedge* he2;
+                Halfedge* he_2;
+                Halfedge* he_intersection2;
+                Halfedge* he_intersection_2;
+
+                while ( true ) {
+                    next_site = he_intersection1->twinEdge()->incFace()->site();
+
+                    he2 = new Halfedge();
+                    he_2 = new Halfedge();
+                    he2->SetIncFace( new_face );
+                    he_2->SetIncFace( next_site->incFace() );
+
+                    Point* midp2 = new Point( ( he2->incFace()->site()->x() + he_2->incFace()->site()->x() ) / 2.0, 
+                        ( he2->incFace()->site()->y() + he_2->incFace()->site()->y() ) / 2.0 );
+                    Vector* dir2 = new Vector( he2->incFace()->site()->y() - he_2->incFace()->site()->y(), 
+                        -he2->incFace()->site()->x() + he_2->incFace()->site()->x() );
+                    Vector* dir_2 = new Vector( -he2->incFace()->site()->y() + he_2->incFace()->site()->y(), 
+                        he2->incFace()->site()->x() - he_2->incFace()->site()->x() );
+                    he2->SetMidPoint( midp2 );
+                    he_2->SetMidPoint( midp2 );
+                    he2->SetDirection( dir2 );
+                    he_2->SetDirection( dir_2 );
+
+                    Vertex* v2 = v_1;
+                    Vertex* v_2 = new Vertex();
+
+                    he_intersection2 = NULL;
+                    he_intersection_2 = he_intersection1->twinEdge();
+
+                    he1->SetNextEdge( he2 );
+                    he2->SetPrevEdge( he1 );
+                    he2->SetTwinEdge( he_2 );
+                    he_2->SetTwinEdge( he2 );
+                    v_2->SetIncEdge( he_2 );
+
+
+                    //bool is_on_convex_hull = UpdateConvexHull( new_site );
+                    //CalcIntersectionVertex( he2, next_site, !is_on_convex_hull, v2, v_2, 
+                    //    he_intersection2, he_intersection_2 );
+                    vector<Halfedge*> result = CalcIntersectionVertices( he2, next_site, !is_on_convex_hull, v2, v_2, 
+                        he_intersection2, he_intersection_2 );
+                    he_intersection2 = result[0];
+                    he_intersection_2 = result[1];
+
+                    if ( he_intersection2 != NULL ) {
+                        Halfedge* tmp = he_intersection2->nextEdge();
+                        while ( tmp != he_intersection_2 ) {
+                            tmp->SetPrevEdge( NULL );
+                            tmp->SetNextEdge( NULL );
+                            tmp = tmp->nextEdge();
+                        }
+                        he_intersection2->SetNextEdge( he_2 );
+                    }
+
+                    if ( he_intersection_2 != NULL ) {
+                        he_intersection_2->SetPrevEdge( he_2 );
+                    }
+
+                    he2->SetOriVertex( v2 );
+                    he_2->SetOriVertex( v_2 );
+
+                    vd->halfedges.push_back( he2 );
+                    vd->halfedges.push_back( he_2 );
+                    vd->vertices.push_back( v_2 );
+
+                    if ( he_intersection2->twinEdge()->incFace()->site() == closest_site ) {
+                        he2->SetNextEdge( first_he );
+                        first_he->SetPrevEdge( he2 );
+                        he_2->SetPrevEdge( first_he_ );
+                        first_he_->SetNextEdge( he_2 );
+                        break;
+                    } else {
+                        he1 = he2;
+                        he_1 = he_2;
+                        he_intersection1 = he_intersection_2;
+                        he_intersection_1 = he_intersection_1;
+                        continue;
+                    }
+                }
+            } else { // not in convex hull
+                if ( he_intersection_1 == NULL ) {
+                    Site* next_site;
+                    Halfedge* he2;
+                    Halfedge* he_2;
+                    Halfedge* he_intersection2;
+                    Halfedge* he_intersection_2;
+
+                    while ( true ) {
+                        next_site = he_intersection1->twinEdge()->incFace()->site();
+
+                        he2 = new Halfedge();
+                        he_2 = new Halfedge();
+                        he2->SetIncFace( new_face );
+                        he_2->SetIncFace( next_site->incFace() );
+
+                        Point* midp2 = new Point( ( he2->incFace()->site()->x() + he_2->incFace()->site()->x() ) / 2.0, 
+                            ( he2->incFace()->site()->y() + he_2->incFace()->site()->y() ) / 2.0 );
+                        Vector* dir2 = new Vector( he2->incFace()->site()->y() - he_2->incFace()->site()->y(), 
+                            -he2->incFace()->site()->x() + he_2->incFace()->site()->x() );
+                        Vector* dir_2 = new Vector( -he2->incFace()->site()->y() + he_2->incFace()->site()->y(), 
+                            he2->incFace()->site()->x() - he_2->incFace()->site()->x() );
+                        he2->SetMidPoint( midp2 );
+                        he_2->SetMidPoint( midp2 );
+                        he2->SetDirection( dir2 );
+                        he_2->SetDirection( dir_2 );
+
+                        Vertex* v2 = v_1;
+                        Vertex* v_2 = new Vertex();
+
+                        he_intersection2 = NULL;
+                        he_intersection_2 = he_intersection1->twinEdge();
+
+                        he1->SetNextEdge( he2 );
+                        he2->SetPrevEdge( he1 );
+                        he2->SetTwinEdge( he_2 );
+                        he_2->SetTwinEdge( he2 );
+                        v_2->SetIncEdge( he_2 );
+
+                        //bool is_on_convex_hull = UpdateConvexHull( new_site );
+                        //CalcIntersectionVertex( he2, next_site, !is_on_convex_hull, v2, v_2, 
+                        //    he_intersection2, he_intersection_2 );
+                        vector<Halfedge*> result = CalcIntersectionVertices( he2, next_site, !is_on_convex_hull, v2, v_2, 
+                            he_intersection2, he_intersection_2 );
+                        he_intersection2 = result[0];
+                        he_intersection_2 = result[1];
+
+                        if ( he_intersection2 != NULL ) {
+                            Halfedge* tmp = he_intersection2->nextEdge();
+                            while ( tmp != he_intersection_2 ) {
+                                tmp->SetPrevEdge( NULL );
+                                tmp->SetNextEdge( NULL );
+                                tmp = tmp->nextEdge();
+                            }
+                            he_intersection2->SetNextEdge( he_2 );
+                        }
+                        if ( he_intersection_2 != NULL ) {
+                            he_intersection_2->SetPrevEdge( he_2 );
+                        }
+
+                        he2->SetOriVertex( v2 );
+                        he_2->SetOriVertex( v_2 );
+
+                        vd->halfedges.push_back( he2 );
+                        vd->halfedges.push_back( he_2 );
+                        vd->vertices.push_back( v_2 );
+
+                        if ( he_intersection2->twinEdge()->incFace()->site() == closest_site ) {
+                            he2->SetNextEdge( first_he );
+                            first_he->SetPrevEdge( he2 );
+                            he_2->SetPrevEdge( first_he_ );
+                            first_he_->SetNextEdge( he_2 );
+                            break;
+                        } else {
+                            he1 = he2;
+                            he_1 = he_2;
+                            he_intersection1 = he_intersection_2;
+                            he_intersection_1 = he_intersection_1;
+                            continue;
+                        }
+                    }
+                } else {
+                    Site* next_site;
+                    Halfedge* he2;
+                    Halfedge* he_2;
+                    Halfedge* he_intersection2;
+                    Halfedge* he_intersection_2;
+
+                    while ( true ) {
+                        next_site = he_intersection_1->twinEdge()->incFace()->site();
+
+                        he2 = new Halfedge();
+                        he_2 = new Halfedge();
+                        he2->SetIncFace( new_face );
+                        he_2->SetIncFace( next_site->incFace() );
+
+                        Point* midp2 = new Point( ( he2->incFace()->site()->x() + he_2->incFace()->site()->x() ) / 2.0, 
+                            ( he2->incFace()->site()->y() + he_2->incFace()->site()->y() ) / 2.0 );
+                        Vector* dir2 = new Vector( he2->incFace()->site()->y() - he_2->incFace()->site()->y(), 
+                            -he2->incFace()->site()->x() + he_2->incFace()->site()->x() );
+                        Vector* dir_2 = new Vector( -he2->incFace()->site()->y() + he_2->incFace()->site()->y(), 
+                            he2->incFace()->site()->x() - he_2->incFace()->site()->x() );
+                        he2->SetMidPoint( midp2 );
+                        he_2->SetMidPoint( midp2 );
+                        he2->SetDirection( dir2 );
+                        he_2->SetDirection( dir_2 );
+
+                        Vertex* v2 = new Vertex();
+                        Vertex* v_2 = v1;
+
+                        he_intersection2 = he_intersection_1->twinEdge();
+                        he_intersection_2 = NULL;
+
+                        he1->SetPrevEdge( he2 );
+                        he2->SetNextEdge( he1 );
+                        he2->SetTwinEdge( he_2 );
+                        he_2->SetTwinEdge( he2 );
+                        v2->SetIncEdge( he2 );
+
+                        //bool is_on_convex_hull = UpdateConvexHull( new_site );
+                        //CalcIntersectionVertex( he2, next_site, !is_on_convex_hull, v2, v_2, 
+                        //    he_intersection2, he_intersection_2 );
+                        vector<Halfedge*> result = CalcIntersectionVertices( he2, next_site, !is_on_convex_hull, v2, v_2, 
+                            he_intersection2, he_intersection_2 );
+                        he_intersection2 = result[0];
+                        he_intersection_2 = result[1];
+
+                        if ( he_intersection2 != NULL ) {
+                            Halfedge* tmp = he_intersection2->nextEdge();
+                            while ( tmp != he_intersection_2 ) {
+                                tmp->SetPrevEdge( NULL );
+                                tmp->SetNextEdge( NULL );
+                                tmp = tmp->nextEdge();
+                            }
+                            he_intersection2->SetNextEdge( he_2 );
+                        }
+                        if ( he_intersection2 != NULL ) {
+                            he_intersection_2->SetPrevEdge( he_2 );
+                        }
+
+                        he2->SetOriVertex( v2 );
+                        he_2->SetOriVertex( v_2 );
+
+                        vd->halfedges.push_back( he2 );
+                        vd->halfedges.push_back( he_2 );
+                        vd->vertices.push_back( v2 );
+
+                        if ( he_intersection2->twinEdge()->incFace()->site() == closest_site ) {
+                            he2->SetPrevEdge( first_he );
+                            first_he->SetNextEdge( he2 );
+                            he_2->SetNextEdge( first_he_ );
+                            first_he_->SetPrevEdge( he_2 );
+                            break;
+                        } else {
+                            he1 = he2;
+                            he_1 = he_2;
+                            he_intersection1 = he_intersection_2;
+                            he_intersection_1 = he_intersection_1;
+                            continue;
+                        }
+                    }
+                }
+            }
         }
     }
     
-    return NULL;
+    DeleteUselessHalfedges();
+
+    return vd;
+}
+
+void VoronoiDiagram::DeleteUselessHalfedges() {
+    vector< Halfedge* >::iterator iter = this->halfedges.begin();
+    while ( iter != this->halfedges.end() ) {
+        if ( (*iter)->prevEdge() == NULL ) {
+            iter = this->halfedges.erase( iter );
+        } else {
+            iter++;
+        }
+    }
+}
+void VoronoiDiagram::PrintVoronoiDiagram( VoronoiDiagram* vd ) {
+
 }

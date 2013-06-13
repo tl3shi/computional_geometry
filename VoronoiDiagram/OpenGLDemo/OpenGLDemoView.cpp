@@ -592,7 +592,9 @@ void COpenGLDemoView::OnLButtonDblClk(UINT nFlags, CPoint point)
 	
 	MessageBox(L"清空控制点，重画");
 	points.clear();
+    pointset.clear();
     result->halfedges.clear();
+
 	Invalidate(FALSE);
 	
 	CView::OnLButtonDblClk(nFlags,point);
@@ -618,6 +620,15 @@ void processPoints()
     points.resize(pointset.size());
     std::copy(pointset.begin(), pointset.end(), points.begin());
 }
+vector<Point *> getPoints(vector<Point> pts)
+{
+    vector<Point *> re;
+    for (unsigned int i =0; i < pts.size(); i++ )
+    {
+        re.push_back(new Point(pts[i].x(),pts[i].y()));
+    }
+    return re;
+}
 
 void COpenGLDemoView::OnDevideConquer()
 {
@@ -636,8 +647,9 @@ void COpenGLDemoView::OnDevideConquer()
         writetofile();
 
     VoronoiDiagram * vd = new VoronoiDiagram();
-    result = vd->DevideConquerConstruction(points);
-    
+    //result = vd->DevideConquerConstruction(points);
+   vector<Point *> pointerPoints = getPoints(points);
+    result = vd->IncrementalConstruction(pointerPoints);
     Invalidate(TRUE);
 
     if(points.size() > 0 )

@@ -138,14 +138,14 @@
     <ClInclude Include="basic_types.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="voronoi_diagram.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="GeometryTool.hpp">
       <Filter>源文件</Filter>
     </ClInclude>
     <ClInclude Include="VoronoiDevideConquer.hpp">
       <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="voronoi_diagram.h">
+      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

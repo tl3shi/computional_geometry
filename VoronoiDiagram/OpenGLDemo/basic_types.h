@@ -182,7 +182,7 @@ class Vertex
 {
 
 public:
-    Vertex( void ) { x_ = 0.0f; y_ = 0.0f; incEdge_ = NULL; };
+    Vertex( void ) { x_ = 0.0f; y_ = 0.0f;  p = Point(0, 0);incEdge_ = NULL; };
     Vertex( double x, double y ) { x_ = x; y_ = y; incEdge_ = NULL; };
     Vertex( Point  p) { x_ = p.x(); y_ = p.y(); this->p = p;incEdge_ = NULL; };
     Vertex( Point*  p) { x_ = p->x(); y_ = p->y(); this->p = *p;incEdge_ = NULL; };
@@ -193,8 +193,8 @@ public:
     inline double x( void ) const { return x_; };
     inline double y( void ) const { return y_; };
     inline Halfedge* incEdge( void ) const { return incEdge_; };
-    inline void SetX( double x ) { x_ = x; };
-    inline void SetY( double y ) { y_ = y; };
+    inline void SetX( double x ) { x_ = x; p.SetX(x);};
+    inline void SetY( double y ) { y_ = y; p.SetY(y);};
     inline void SetIncEdge( Halfedge* incEdge ) { incEdge_ = incEdge; };
 public:
     Point p;
