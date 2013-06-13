@@ -81,7 +81,44 @@ using namespace std;
                 if (!(edge->oriVertex()->p == edge->prevEdge()->twinEdge()->oriVertex()->p)) return i;
 
         }
-        return edges.size();
+        
+        return -1;
+    }
+
+    //check one edge point to a loop...
+    int checkFaces(vector<Site*> sites)
+    {
+        const int MAXLOOP = 2000;
+        for (unsigned int i = 0; i < sites.size(); i++)
+        {
+            Halfedge* initalEdge = sites[i]->incFace()->incEdge();
+            Halfedge*  edge;
+            edge = initalEdge;
+            bool hasDetectAll = false;
+            int loop = 0;
+            while(edge != NULL)
+            {
+                edge = edge->nextEdge();
+                if(edge != NULL && *edge == *initalEdge)
+                {
+                    hasDetectAll = true;
+                    break;
+                }
+                loop ++;
+                if(loop > MAXLOOP)
+                    return i;
+            }
+
+            edge = initalEdge->prevEdge();
+            while(!hasDetectAll && edge != NULL && !((*edge) == (*initalEdge)))//prev 
+            {
+                edge = edge->prevEdge();
+                loop ++;
+                if(loop > MAXLOOP)
+                    return i;
+            }
+       }
+       return -1;
     }
 
 VoronoiDiagram* smallVD(vector<Point> &origin, int left, int right)
@@ -95,11 +132,16 @@ VoronoiDiagram* smallVD(vector<Point> &origin, int left, int right)
        Point p2 = origin.at(right);
        
        Site *s0 , *s1, *s2;// ccw
-       if(GeometryTool::to_left(p0, p1, p2))
+       if(GeometryTool::to_left_strict(p0, p1, p2))
        {
             s0 = new Site(p0);
             s1 = new Site(p1);
             s2 = new Site(p2);
+       }else if(GeometryTool::point_online(p0, p1, p2))
+       {
+           s0 = new Site(p0);
+           s1 = new Site(p1);
+           s2 = new Site(p2);
        }else
        {
            s0 = new Site(p0);
@@ -153,6 +195,11 @@ VoronoiDiagram* smallVD(vector<Point> &origin, int left, int right)
            s0->SetFace(f0);
            s1->SetFace(f1);
            s2->SetFace(f2);
+
+           e1->SetIncFace(s0->incFace());
+           e2->SetIncFace(s1->incFace());
+           e3->SetIncFace(s1->incFace());
+           e4->SetIncFace(s2->incFace());
 
            result->sites.push_back(s0);
            result->sites.push_back(s1);
@@ -499,8 +546,11 @@ public:
 };
 void deleteNextEdgeWithCondition(vector<Halfedge*> &edges, Halfedge * edge, Halfedge * e2)
 {
+    //what if the deleted edge is the site initially point to...
+
     Halfedge * nextEdge = edge->nextEdge();
     if(nextEdge == NULL) return;
+
     bool toleft =  GeometryTool::to_left(nextEdge->oriVertex()->p, e2);
     bool on_line  = GeometryTool::point_online(nextEdge->oriVertex()->p, e2);
     
@@ -514,8 +564,13 @@ void deleteNextEdgeWithCondition(vector<Halfedge*> &edges, Halfedge * edge, Half
         it = edges.begin(); 
         while (it!= edges.end())
         {
-            if((*nextEdge) == *(*it) || (*nextEdge->twinEdge()) == *(*it))
+            if((*nextEdge) == *(*it) )
             {
+                if((*it)->incFace()->incEdge() == (*it))
+                {
+                    (*it)->incFace()->SetIncEdge(edge); 
+                }
+
                 if((*it)->nextEdge() != NULL)
                     (*it)->nextEdge()->SetPrevEdge(NULL);
                 if(NULL != (*it)->prevEdge())
@@ -524,44 +579,36 @@ void deleteNextEdgeWithCondition(vector<Halfedge*> &edges, Halfedge * edge, Half
                 (*it)->twinEdge()->nextEdge()->SetPrevEdge(NULL);
                 if((*it)->twinEdge() != NULL && (*it)->twinEdge()->prevEdge() != NULL)
                 (*it)->twinEdge()->prevEdge()->SetNextEdge(NULL); */
-                it = edges.erase(it);    
+               
+                it = edges.erase(it);  
+               
+            }else if((*nextEdge->twinEdge()) == *(*it))
+            {
+                
+                if((*it)->incFace()->incEdge() == (*it))
+                {
+                    assert((edge->twinEdge()->prevEdge() != NULL) == true);
+                    //the edge prev edge must exists, for a vertical is made up of 6 halfedges.
+                    (*it)->incFace()->SetIncEdge(edge->twinEdge()->prevEdge()->twinEdge()); 
+                }
+                
+                if((*it)->nextEdge() != NULL)
+                    (*it)->nextEdge()->SetPrevEdge(NULL);
+                if(NULL != (*it)->prevEdge())
+                    (*it)->prevEdge()->SetNextEdge(NULL);
+
+                it = edges.erase(it);  
             }else
             {
                 it++;
             }
         }
-        edge->SetNextEdge(NULL);
-        edge->twinEdge()->SetPrevEdge(NULL);
         //delete nextEdge;
     }
 
 }
 
-void deleteNextEdgeXXX(vector<Halfedge*> &edges,  Halfedge * edge)
-{
-      Halfedge * nextEdge = edge->nextEdge();
-    /*if(nextEdge != NULL)
-    deleteNextEdge(edges, nextEdge);*/ //with condition should
-    if (nextEdge != NULL)
-    {
-        vector<Halfedge*>::iterator it;
-        it = edges.begin(); 
-        while (it!= edges.end())
-        {
-            if((*nextEdge) == *(*it) || (*nextEdge->twinEdge()) == *(*it))
-            {
-                it = edges.erase(it);    
-            }else
-            {
-                it++;
-            }
-        }
-        //edge->nextEdge()->SetPrevEdge(NULL);No need, has delete, none can access it
-        edge->SetNextEdge(NULL);
-        edge->twinEdge()->SetPrevEdge(NULL);
-        //delete nextEdge;
-    }
-}
+
 
 void deletePrevEdgeWithCondition(vector<Halfedge*> &edges,  Halfedge * edge, Halfedge * e2)
 {
@@ -571,6 +618,7 @@ void deletePrevEdgeWithCondition(vector<Halfedge*> &edges,  Halfedge * edge, Hal
 
     bool toleft = GeometryTool::to_left(prevEdge->twinEdge()->oriVertex()->p, e2);
     bool on_line = GeometryTool::point_online(prevEdge->twinEdge()->oriVertex()->p, e2); 
+    
     if(toleft && !on_line)
     {
         if(prevEdge->prevEdge() != NULL)
@@ -581,8 +629,13 @@ void deletePrevEdgeWithCondition(vector<Halfedge*> &edges,  Halfedge * edge, Hal
         it = edges.begin(); 
         while (it!= edges.end())
         {
-            if((*prevEdge) == *(*it) || (*prevEdge->twinEdge()) == *(*it))
+            if((*prevEdge) == *(*it) )
             {
+                if ((*it)->incFace()->incEdge() == *it)
+                {
+                    (*it)->incFace()->SetIncEdge(edge);
+                }
+
                 if((*it)->nextEdge() != NULL)
                     (*it)->nextEdge()->SetPrevEdge(NULL);
                 if(NULL != (*it)->prevEdge())
@@ -592,49 +645,48 @@ void deletePrevEdgeWithCondition(vector<Halfedge*> &edges,  Halfedge * edge, Hal
                 (*it)->twinEdge()->nextEdge()->SetPrevEdge(NULL);
                 if((*it)->twinEdge() != NULL && (*it)->twinEdge()->prevEdge() != NULL)
                 (*it)->twinEdge()->prevEdge()->SetNextEdge(NULL); */
-
+                
                 it = edges.erase(it);   
-            }else
+
+            }else if((*prevEdge->twinEdge()) == *(*it))
+            {
+                //delete the edge's prev 's twin
+                if ((*it)->incFace()->incEdge() == *it)
+                {
+                    if((*it)->prevEdge() != NULL)
+                    {
+                        (*it)->incFace()->SetIncEdge((*it)->prevEdge());//or *it 's previous or next who is not null
+                    }
+                    else if((*it)->nextEdge() != NULL)//the twin's prev also will be deleted...
+                    {
+                        //for debug
+                        int itemp=2;
+                        itemp++;
+                    }else
+                    {
+                        assert(1+1 == 3);
+                    }
+                }
+
+                if((*it)->nextEdge() != NULL)
+                    (*it)->nextEdge()->SetPrevEdge(NULL);
+                if(NULL != (*it)->prevEdge())
+                    (*it)->prevEdge()->SetNextEdge(NULL);
+                
+                it = edges.erase(it); 
+            }
+            else
             {
                 it++;
             }
         }
-        edge->SetPrevEdge(NULL);
-        edge->twinEdge()->SetNextEdge(NULL);
+        //edge->SetPrevEdge(NULL);
+        //edge->twinEdge()->SetNextEdge(NULL);
         //delete prevEdge;
     }
 }
 
-
-void deletePrevEdgeXXX(vector<Halfedge*> &edges,  Halfedge * edge)
-{
-    //return;
-    Halfedge * prevEdge = edge->prevEdge();
-    assert(prevEdge->prevEdge() == NULL);
-    //if(prevEdge != NULL){
-    //    deletePrevEdge(edges, prevEdge); the left conditino should given
-    //}
-    if (prevEdge != NULL)
-    {
-        vector<Halfedge*>::iterator it;
-        it = edges.begin(); 
-        while (it!= edges.end())
-        {
-            if((*prevEdge) == *(*it) || (*prevEdge->twinEdge()) == *(*it))
-            {
-                it = edges.erase(it);    
-            }else
-            {
-                it++;
-            }
-        }
-        edge->SetPrevEdge(NULL);
-        edge->twinEdge()->SetNextEdge(NULL);
-        //delete prevEdge;
-    }
-}
-
-void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right, Site* leftMin, Site * rightMin)
+void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right)
 {
     Halfedge * lastE1 = new Halfedge();
     Halfedge * lastE2 = new Halfedge();
@@ -786,22 +838,148 @@ void connectWithChainOld(vector<DevideChain> &devideChain, VoronoiDiagram* left,
     }
 }
 
-
-void connectWithChain(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right, Site* leftMin, Site * rightMin)
+void connectWithChainNew(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right);
+void connectWithChain(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right)
 {
     int sthLeftWrong = checkDCEL(left->halfedges);
     int sthRightWrong = checkDCEL(right->halfedges);
-    assert(sthLeftWrong == left->halfedges.size());
-    assert(sthRightWrong == right->halfedges.size());
+    assert(sthLeftWrong == -1);
+    assert(sthRightWrong == -1);
+    
+    int sthLeftSiteWrong = checkFaces(left->sites);
+    int sthRightSiteWrong = checkFaces(right->sites);
+    assert(sthLeftSiteWrong == -1);//-1 means all right, or else return the wrong index of site.
+    assert(sthRightSiteWrong == -1);
 
-    connectWithChainOld(devideChain, left, right, leftMin, rightMin);
+    //connectWithChainOld(devideChain, left, right);
+    connectWithChainNew(devideChain, left, right);
    
     sthLeftWrong = checkDCEL(left->halfedges);
     sthRightWrong = checkDCEL(right->halfedges);
-    assert(sthLeftWrong == left->halfedges.size());
-    assert(sthRightWrong == right->halfedges.size());
+    assert(sthLeftWrong == -1);
+    assert(sthRightWrong == -1);
+
+    sthLeftSiteWrong = checkFaces(left->sites);
+    sthRightSiteWrong = checkFaces(right->sites);
+
+    if(sthLeftSiteWrong != -1) //for convenient to add a breakpoint
+    {
+        //for convenient to add a breakpoint
+       assert(sthLeftSiteWrong == -1);
+    }
+
+    if(sthRightSiteWrong != -1) //for convenient to add a breakpoint
+    {
+        //for convenient to add a breakpoint
+      assert(sthRightSiteWrong == -1);
+    }
+    
+
 }
 
+void connectWithChainNew(vector<DevideChain> &devideChain, VoronoiDiagram* left, VoronoiDiagram* right)
+{
+    vector<Halfedge *> e1s;
+    vector<Halfedge *> e2s;
+    for (unsigned int i = 0; i < devideChain.size(); i++)
+    {
+        DevideChain chain = devideChain.at(i);
+        Halfedge * e1 = new Halfedge();
+        Halfedge * e2 = new Halfedge();
+
+        Vector * downDirection = chain.downEdge->direction();
+        Point * mid = chain.downEdge->midPoint();
+        e2->SetDirection(-(*downDirection));
+        e1->SetDirection(downDirection);
+        e1->SetTwinEdge(e2);
+        e2->SetTwinEdge(e1);
+        e2->SetMidPoint(mid);
+        e1->SetMidPoint(mid);
+        e1->SetIncFace(chain.rightsite->incFace());
+        e2->SetIncFace(chain.leftsite->incFace());
+
+        e2->SetOriVertex(chain.intersectionV);
+        if(i == 0)//the bisector vertical line from infinite
+            e1->SetOriVertex(infiniteVertex);
+        else
+            e1->SetOriVertex(devideChain.at(i-1).intersectionV);
+        
+        right->halfedges.push_back(e1);
+        left->halfedges.push_back(e2);
+        e1s.push_back(e1);
+        e2s.push_back(e2);
+    }
+    //first ignore the diagram, connect e1 and e2
+    for (int i = 0; i < devideChain.size(); i++)
+    {
+        if(i+1 < devideChain.size())
+        {
+            e1s[i]->SetNextEdge(e1s[i+1]);
+            e1s[i+1]->SetPrevEdge(e1s[i]);
+        }
+        
+        if(i-1 >= 0)//cannot use unsigned int. cause unsigned int i=0, i-1 > 0 is true; 
+        {
+            e2s[i]->SetNextEdge(e2s[i-1]);
+            e2s[i-1]->SetPrevEdge(e2s[i]);
+        }
+    }
+
+    for (unsigned int i = 0; i < devideChain.size(); i++)
+    {
+        DevideChain chain = devideChain[i];
+        Halfedge * edge = chain.intersectionEdge;
+        if(edge == NULL)//the last 
+        {
+
+            //both this intersection and the last intersection are with the left sub voronoi diagram
+            if(devideChain[i-1].left)
+            {
+                e2s[i]->SetNextEdge(devideChain.at(i-1).intersectionEdge->twinEdge());
+                devideChain.at(i-1).intersectionEdge->twinEdge()->SetPrevEdge(e2s[i]);
+            }else
+            {
+                e1s[i]->SetPrevEdge(devideChain.at(i-1).intersectionEdge->twinEdge());
+                devideChain.at(i-1).intersectionEdge->twinEdge()->SetNextEdge(e1s[i]);
+            }
+            break;
+        }
+
+        if (chain.left)
+        {
+            if(edge->nextEdge() != NULL)
+            {
+                 //what if the deleted edge is the site initially point to...
+                //chain.leftsite->incFace()->SetIncEdge(edge);
+                //the set  edge operation should put into the delete operation ,for recursively delete operation
+                deleteNextEdgeWithCondition(left->halfedges, edge, e2s[i]);
+            }
+            edge->SetNextEdge(e2s[i]);
+            edge->twinEdge()->SetOriVertex(chain.intersectionV);
+            e2s[i]->SetPrevEdge(edge);
+
+            if (i+1 < devideChain.size())
+            {
+                edge->twinEdge()->SetPrevEdge(e2s[i+1]);
+                e2s[i+1]->SetNextEdge(edge->twinEdge());
+            }
+        }else//right
+        {
+            if(edge->prevEdge() != NULL)
+            {
+                deletePrevEdgeWithCondition(right->halfedges, edge, e2s[i]);
+            }
+            edge->SetOriVertex(chain.intersectionV);
+            e1s[i]->SetNextEdge(edge);
+            edge->SetPrevEdge(e1s[i]);
+            if(i+1 < devideChain.size())
+            {
+                edge->twinEdge()->SetNextEdge(e1s[i+1]);
+                e1s[i+1]->SetPrevEdge(edge->twinEdge());
+            }
+        }
+    }
+}
 
 
 VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
@@ -882,7 +1060,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
          
         //if there is..but no new intersection s.t condition ok..the edge is changed...
         edge = initalEdge->prevEdge();
-        while(!hasDetectAll && edge != NULL)//prev 
+        while(!hasDetectAll && edge != NULL && !((*edge) == (*initalEdge)))//prev 
         {
             Point* edge_p = edge->midPoint();  
             Vector* edge_d = edge->direction();  
@@ -929,7 +1107,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
         }
         
         edge = initalEdge->prevEdge();
-        while(!hasDetectAll && edge != NULL)//prev 
+        while(!hasDetectAll && edge != NULL && !((*edge) == (*initalEdge)))//prev 
         {
             Point* edge_p = edge->midPoint();  
             Vector* edge_d = edge->direction();  
@@ -985,7 +1163,7 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
         //chain to the lower bound
     }while(!tobottom); 
 
-    connectWithChain(devideChain, left, right, leftMin, rightMin);
+    connectWithChain(devideChain, left, right);
     //left right to result
     result = (*right) + (*left);
     return result;
@@ -994,9 +1172,35 @@ VoronoiDiagram* mergeVD(VoronoiDiagram* left, VoronoiDiagram* right)
 VoronoiDiagram* partition(vector<Point> &origin, int left, int right)
 {
     if(right - left < 3)
-        return smallVD(origin, left, right);
-    else
-        return mergeVD(partition(origin, left, (left+right)/2), partition(origin, (left+right)/2 + 1, right));
+    {
+        VoronoiDiagram * result =  smallVD(origin, left, right);
+        int sthWrong = checkDCEL(result->halfedges);
+        assert(sthWrong == -1);
+        assert(checkFaces(result->sites) == -1);
+        return result;
+    }else
+    {
+        VoronoiDiagram * leftResult = partition(origin, left, (left+right)/2); 
+        VoronoiDiagram * rightResult = partition(origin, (left+right)/2 + 1, right);
+
+        int sthLeftSiteWrong = checkFaces(leftResult->sites);
+        int sthRightSiteWrong = checkFaces(rightResult->sites);
+
+        if(sthLeftSiteWrong != -1) //for convenient to add a breakpoint
+        {
+            //for convenient to add a breakpoint
+            assert(sthLeftSiteWrong == -1);
+        }
+
+        if(sthRightSiteWrong != -1) //for convenient to add a breakpoint
+        {
+            //for convenient to add a breakpoint
+            assert(sthRightSiteWrong == -1);
+        }
+
+
+        return mergeVD(leftResult, rightResult);
+    }
 }   
 
 VoronoiDiagram* VoronoiDiagram::DevideConquerConstruction( vector< Point > &points )

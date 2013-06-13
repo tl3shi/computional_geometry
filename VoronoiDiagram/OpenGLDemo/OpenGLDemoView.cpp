@@ -27,14 +27,15 @@
 #include <iostream>
 #include <cstdlib>
 #include <fstream>
-
+#include  <io.h>
 #include <set>
 set<Point> pointset;
 
 Point infinitePoint = Point(DBL_MAX, DBL_MAX);
 
-bool debug = true;
+bool debug = false;
 using namespace std;
+
 
 
 vector<Point> points;
@@ -59,6 +60,10 @@ BEGIN_MESSAGE_MAP(COpenGLDemoView, CView)
 	ON_WM_ERASEBKGND()
 	ON_WM_LBUTTONDBLCLK()
     ON_COMMAND(ID_32771, &COpenGLDemoView::OnDevideConquer)
+    ON_COMMAND(ID_32772, &COpenGLDemoView::OnIncrementalConstruction)
+    ON_COMMAND(ID_FILE_SAVE_AS, &COpenGLDemoView::OnFileSaveAs)
+    ON_COMMAND(ID_FILE_OPEN, &COpenGLDemoView::OnFileOpen)
+    ON_COMMAND(ID_FILE_SAVE, &COpenGLDemoView::OnFileSave)
 END_MESSAGE_MAP()
 
 void initLights();
@@ -85,9 +90,10 @@ BOOL COpenGLDemoView::PreCreateWindow(CREATESTRUCT& cs)
 
 	return CView::PreCreateWindow(cs);
 }
-void writetofile()
+void writetofile(string filename="pointsout.txt")
 {
-    ofstream outf("pointsout.txt");
+    //ofstream outf("pointsout.txt");
+    ofstream outf(filename);
     streambuf *default_buf=cout.rdbuf();   
     cout.rdbuf( outf.rdbuf() );   
     for (unsigned int i = 0; i < points.size(); i++)
@@ -97,7 +103,7 @@ void writetofile()
     }
     cout.rdbuf(default_buf);
 }
-vector<Point> readfromfile(char* filename)
+vector<Point> readfromfile(string filename)
 {
     vector<Point> ps;
     ifstream f(filename);
@@ -109,7 +115,11 @@ vector<Point> readfromfile(char* filename)
         int x = -1, y = -1;
         char comma;
         f >> x >> comma >> y >> comma >> idindex;
-        if(x == -1 && y == -1) continue;
+        if(x == -1 && y == -1)
+        {
+            cout << "Make sure that the input file format is OK." << endl;
+            break;
+        }
         ps.push_back(Point(x, y));
     }
     f.close();
@@ -199,6 +209,10 @@ void drawResult()
             if(p == infinitePoint)//edge from infinite
             {
                 Point np = edge->twinEdge()->oriVertex()->p;
+                if(np == infinitePoint)
+                {
+                    np = (-*(edge->direction())) * INFINITE_LENGTH;
+                }
                 glVertex3d(np.x(), np.y(), 0);
 
                 p = np + (-*(edge->direction())) * INFINITE_LENGTH;
@@ -249,7 +263,120 @@ void drawResult()
     
 
     //draw string
-    //return;
+    if(!debug)
+        return;
+    char* str = new char[3];
+    for (unsigned int i = 0; i < result->halfedges.size(); i++)
+    {
+        Halfedge * edge = result->halfedges.at(i);
+        Point* p = edge->midPoint();
+        sprintf(str, "%d", i);
+        cout << i << p->toString()<< str << endl;
+        if(edge->twinEdge()->hasDraw)
+        {
+            //cout << i << p->toString()<< str << endl;
+            drawString(p->x(), p->y()-10, str);
+            //do not draw....
+        }else
+        {
+            drawString(p->x(), p->y(), str);
+        }
+        edge->hasDraw = true;
+    }
+    cout.rdbuf(default_buf);  
+}
+
+void drawResultForIncrementalConstruction()
+{
+    glLineWidth(1);
+    glBegin(GL_LINES);
+    glColor3d(1, 0, 0);
+    if(result->sites.size() == 1)//one site, the whole face
+        return;
+    if(result->sites.size() == 2)//two sites,draw a line
+    {
+        Halfedge * e  = result->halfedges.at(0);
+        Point * p = e->midPoint();
+        Point oneP, anotherP ;
+        oneP = (*p) + (-*(e->direction())) * INFINITE_LENGTH;
+        anotherP = (*p) - (-*(e->direction())) * INFINITE_LENGTH;
+        glVertex3d(oneP.x(), oneP.y(), 0);
+        glVertex3d(anotherP.x(), anotherP.y(), 0);
+        glEnd();
+        return;
+    }
+
+
+    ofstream outf("pointsout.debug.txt");
+    streambuf *default_buf=cout.rdbuf();   
+    cout.rdbuf( outf.rdbuf() );   
+
+    for (unsigned int i = 0; i < result->halfedges.size(); i++)
+    {
+        Halfedge * edge = result->halfedges.at(i);
+
+        if ( edge->nextEdge()->oriVertex()->x() != DBL_MAX && edge->oriVertex()->x() != DBL_MAX )// edge point to regular point
+        {
+            Point p = edge->oriVertex()->p;
+            if(p == infinitePoint)//edge from infinite
+            {
+                Point np = edge->twinEdge()->oriVertex()->p;
+                if(np == infinitePoint)
+                {
+                    np = (-*(edge->direction())) * INFINITE_LENGTH;
+                }
+                glVertex3d(np.x(), np.y(), 0);
+
+                p = np + (-*(edge->direction())) * INFINITE_LENGTH;
+                glVertex3d(p.x(), p.y(), 0);
+
+                cout<< i<<":"<< p.x() << "," << p.y() <<"," << np.x() << ","<< np.y() << endl;
+                continue;
+            }
+            //regular edge
+            glVertex3d(p.x(), p.y(), 0);
+
+
+            Point np = edge->twinEdge()->oriVertex()->p;
+            glVertex3d(np.x(), np.y(), 0);
+            cout<< i<<":"<< p.x() << "," << p.y() <<"," << np.x() << ","<< np.y() << endl;
+        }
+        else//ray, point to infinite
+        {
+            Point p = edge->oriVertex()->p;
+            if (p == infinitePoint)
+            {
+                Point np = edge->twinEdge()->oriVertex()->p;
+                if (np == infinitePoint)// a line from infinite to infinite 
+                {
+                    p = Point(0,0) - (*(edge->direction())) * INFINITE_LENGTH;
+                    glVertex3d(p.x(), p.y(), 0);
+
+
+                    p = Point(0,0) + (*(edge->direction())) * INFINITE_LENGTH;
+                    glVertex3d(p.x(), p.y(), 0);
+                    cout<< i<<":"<<  p.x() << "," << p.y() <<"," << np.x() << "," << np.y() << endl;
+                    continue;
+                }
+                //edge from infinite to a fix point
+                glVertex3d(np.x(), np.y(), 0);
+                p = np - (*(edge->direction())) * INFINITE_LENGTH;
+                glVertex3d(p.x(), p.y(), 0);
+                continue;
+            }
+            glVertex3d(p.x(), p.y(), 0);
+            Point np = p + (*(edge->direction())) * INFINITE_LENGTH;
+            glVertex3d(np.x(), np.y(), 0);
+
+            cout<< i<<":"<<  p.x() << "," << p.y() <<"," << np.x() << "," << np.y() << endl;
+        }
+    }
+    glEnd();
+
+
+    //draw string
+    if(!debug)
+        return;
     char* str = new char[3];
     for (unsigned int i = 0; i < result->halfedges.size(); i++)
     {
@@ -381,10 +508,14 @@ void COpenGLDemoView::OnDraw(CDC* pDC)
     processPoints();
 
     drawPoints();
-    drawString(0, 0 , ("tanglei-begin"));
+    //drawString(0, 0 , ("tanglei-begin"));
     if (result != NULL)
     {
-        drawResult();
+        if ( result->method == 0 ) {
+            drawResultForIncrementalConstruction();
+        } else if ( result->method == 1 ) {
+            drawResult();
+        }
     }
     //drawString(100, 100 , ("tanglei-end"));
 
@@ -610,6 +741,7 @@ bool pointComp(const Point &p0, const Point &p1)
 
 void processPoints()
 {
+    if(points.size() == 0 && pointset.size() == 0) return;
     if(pointset.size() == 0)//may read from file...for test..
     {
         for (unsigned int i = 0; i < points.size(); i++)
@@ -643,16 +775,17 @@ void COpenGLDemoView::OnDevideConquer()
     processPoints();
 
 
-    if(points.size() > 0 )
+    if(debug && points.size() > 0 )
         writetofile();
 
     VoronoiDiagram * vd = new VoronoiDiagram();
-    //result = vd->DevideConquerConstruction(points);
-   vector<Point *> pointerPoints = getPoints(points);
-    result = vd->IncrementalConstruction(pointerPoints);
+    result = vd->DevideConquerConstruction(points);
+    //vector<Point *> pointerPoints = getPoints(points);
+    //result = vd->IncrementalConstruction(pointerPoints);
+    result->method = 1;
     Invalidate(TRUE);
 
-    if(points.size() > 0 )
+    if(debug && points.size() > 0 )
         writetofile();
 
     //ofstream outf("halfedges.address.txt");
@@ -684,4 +817,136 @@ void COpenGLDemoView::OnDevideConquer()
     //if(points.size() > 0 )
     //    writetofile();
 
+}
+
+
+void COpenGLDemoView::OnIncrementalConstruction()
+{
+
+    processPoints();
+
+
+    if(debug && points.size() > 0 )
+        writetofile();
+
+    VoronoiDiagram * vd = new VoronoiDiagram();
+    //result = vd->DevideConquerConstruction(points);
+    vector<Point *> pointerPoints = getPoints(points);
+    try
+    {
+        result = vd->IncrementalConstruction(pointerPoints);
+    }
+    catch (CException* e)
+    {
+
+    }
+    
+    
+    result->method = 0;
+    Invalidate(TRUE);
+
+    if(debug && points.size() > 0 )
+        writetofile();
+
+
+}
+
+TCHAR* CString2TCHAR(CString &str) 
+{ 
+    int iLen = str.GetLength(); 
+    TCHAR* szRs = new TCHAR[iLen]; 
+    lstrcpy(szRs, str.GetBuffer(iLen)); 
+    str.ReleaseBuffer(); 
+    return szRs; 
+} 
+
+char* CString2char(CString &str) 
+{ 
+    int len = str.GetLength(); 
+    char* chRtn = (char*)malloc((len*2+1)*sizeof(char));//CString的长度中汉字算一个长度 
+    memset(chRtn, 0, 2*len+1); 
+    USES_CONVERSION; 
+    strcpy((LPSTR)chRtn,OLE2A(str.LockBuffer())); 
+    return chRtn; 
+} 
+
+
+
+void COpenGLDemoView::OnFileSaveAs()
+{
+    CString strExt = L".txt";                                // extention 
+    CString strFilePath;
+    CString strFilter;
+
+    char * filename ;
+    strFilter.Format(L"Text Files (*.txt)|*.txt|All Files (*.*)|*.*||");
+    CFileDialog dlg(FALSE, NULL, L"", NULL, strFilter);
+    if (!(dlg.DoModal() == IDOK))
+        return;
+    else
+    {
+        strFilePath = dlg.GetPathName();
+        filename = CString2char(strFilePath);
+        if (strFilePath.Find(strExt) == -1)//查找扩展名，如果没有输入则自动加
+        {
+            strFilePath += strExt;
+        }
+        if (access(filename, 0) == 0 )//should include  <io.h>
+        {
+            CString strQuery;
+            strQuery.Format(L"%s has exists, REPLACE it?", strFilePath);
+            if (IDNO == ::MessageBox(m_hWnd, strQuery, L"File replace QA", MB_ICONQUESTION | MB_YESNO) )
+            {
+                return;
+            }
+        }
+    }
+    //const char * filename ="testfile.txt";
+  
+    writetofile(filename);
+    CString tip;
+    tip.Format(L"%s Save OK.", strFilePath);
+    MessageBox(tip);
+}
+
+
+void COpenGLDemoView::OnFileOpen()
+{
+    CString strExt = _T(".txt");                                // 扩展名
+    CString strFilePath;
+    CString strFilter;
+    char*  filename;
+    strFilter.Format(L"Text Files (*txt)|*txt|All Files (*.*)|*.*||");
+    CFileDialog dlg(true, NULL, L"", NULL, strFilter);
+    if (!(dlg.DoModal() == IDOK))
+        return;
+    else
+    {
+        strFilePath = dlg.GetPathName();
+        filename = CString2char(strFilePath);
+        if (strFilePath.Find(strExt) == -1)//查找扩展名，如果没有输入则自动加
+        {
+            strFilePath += strExt;
+        }
+        if (access(filename, 0) == 0 )
+        {
+        }else
+        {
+            CString strQuery;
+            strQuery.Format(L"%s does Not exist", strFilePath);
+            MessageBox(strQuery);
+        }
+    }
+   
+    //const char * filename ="testfile.txt";
+    points = readfromfile(filename);
+    pointset.clear();
+
+    Invalidate(TRUE);
+}
+
+
+void COpenGLDemoView::OnFileSave()
+{
+    COpenGLDemoView::OnFileSaveAs();
 }

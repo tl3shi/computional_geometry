@@ -64,7 +64,7 @@ public:
 };
 
 
-const int INFINITE_LENGTH  = 10000;
+const int INFINITE_LENGTH  = 100000000;
 
 class GeometryTool
 {
@@ -104,10 +104,17 @@ public:
     }
 
     //test if po is on the left of p2p3
+    bool static to_left_strict(const Point &p0, const Point &p1, const Point &p2)
+    {
+        //p0p1 * p2p1 * sin(theta)
+        return ((p2 - p1) ^ (p0 - p1)) > TOLERANCE;
+    }
+
+    //test if po is on the left of p2p3
     bool static to_left(const Point &p0, const Point &p1, const Point &p2)
     {
         //p0p1 * p2p1 * sin(theta)
-        return ((p2 - p1) ^ (p0 - p1)) > 0;
+        return ((p2 - p1) ^ (p0 - p1)) >  0;
     }
 
     //test if po is on the left of direction edge
@@ -123,6 +130,13 @@ public:
         return ((p2 - p1) ^ (p0 - p1)) > TOLERANCE;
     }
 
+    bool static point_online(const Point &p0, const Point &p1, const Point &p2)
+    {
+        //p0p1 * p2p1 * sin(theta)
+        return isParallel(Vector(p0-p1), Vector(p2-p1));
+    }
+
+
     bool static point_online(const Point &p0, const Halfedge * edge)
     {
         //p0p1 * p2p1 * sin(theta)
@@ -132,7 +146,7 @@ public:
         Point p1 = edge->oriVertex()->p;
         if(p1 == infinitePoint)
             p1 = *(edge->midPoint()) - (*(edge->direction())) * INFINITE_LENGTH;
-        double parallel = isParallel(Vector(p0-p1), Vector(p2-p1));
+        bool parallel = isParallel(Vector(p0-p1), Vector(p2-p1));
         if(!parallel) return false;
         return isInRectangle(p0, p1, p2);
     }
@@ -205,9 +219,11 @@ public:
         if(ret == NULL) return NULL;
 
         Point start = edge->oriVertex()->p;
+        
         if(start == infinitePoint)
             start = *(edge->midPoint()) - (*(edge->direction())) * INFINITE_LENGTH;
         Point end = edge->twinEdge()->oriVertex()->p;
+        
         if(end == infinitePoint)
             end = *(edge->midPoint()) + (*(edge->direction())) * INFINITE_LENGTH;
 

@@ -55,6 +55,10 @@ public:
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
     afx_msg void OnDevideConquer();
+    afx_msg void OnIncrementalConstruction();
+    afx_msg void OnFileSaveAs();
+    afx_msg void OnFileOpen();
+    afx_msg void OnFileSave();
 };
 
 #ifndef _DEBUG  // OpenGLDemoView.cpp 中的调试版本
